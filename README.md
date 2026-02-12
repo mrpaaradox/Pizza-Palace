@@ -1,36 +1,241 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🍕 Pizza Palace
 
-## Getting Started
+A full-stack pizza delivery application built with Next.js, Better Auth, Prisma, and PostgreSQL.
 
-First, run the development server:
+## ✨ Features
+
+### User Features
+- **Authentication**: Email/password login with Gmail-only restriction for customers
+- **Email Verification**: Automated email verification using Resend
+- **Browse Menu**: View pizzas by category with images and descriptions
+- **Shopping Cart**: Add items, update quantities, remove items
+- **Order Placement**: Complete checkout with delivery details
+- **Order Tracking**: View order history and track current orders
+
+### Admin Features
+- **Dashboard Overview**: View stats (total orders, customers, revenue)
+- **Order Management**: View all orders with filtering and pagination
+- **Status Updates**: Update order status (Pending → Confirmed → Preparing → Out for Delivery → Delivered)
+- **Customer Management**: View customer details
+
+## 🚀 Tech Stack
+
+- **Framework**: Next.js 16 with App Router
+- **Authentication**: Better Auth with email/password
+- **Database**: PostgreSQL with Prisma ORM
+- **Email**: Resend for email verification
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **Package Manager**: PNPM
+
+## 📦 Prerequisites
+
+- Node.js 20+
+- PNPM
+- Docker (for PostgreSQL)
+- Resend API key
+
+## 🛠️ Setup Instructions
+
+### 1. Clone and Install
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Install dependencies
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env` file in the root directory:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Database
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/pizza_palace?schema=public"
 
-## Learn More
+# Better Auth (generate a secure secret)
+BETTER_AUTH_SECRET="your-super-secret-key-change-in-production-min-32-characters-long"
+BETTER_AUTH_URL="http://localhost:3000"
 
-To learn more about Next.js, take a look at the following resources:
+# Resend Email
+RESEND_API_KEY="re_PtgyxhYG_J5g9SKtiKjhgvFEoWTi1agCX"
+EMAIL_FROM="noreply@pizzapalace.com"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Start PostgreSQL
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Start the database
+docker-compose up -d
+```
 
-## Deploy on Vercel
+### 4. Database Setup
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# Generate Prisma client
+pnpm db:generate
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Run migrations
+pnpm db:migrate
+
+# Seed the database with pizza data
+pnpm db:seed
+```
+
+### 5. Run the Development Server
+
+```bash
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 📝 Usage
+
+### Creating an Admin User
+
+1. Register a user with any email
+2. Access the database and update the user's role to `ADMIN`:
+
+```sql
+UPDATE users SET role = 'ADMIN' WHERE email = 'your-email@gmail.com';
+```
+
+Or use Prisma Studio:
+
+```bash
+pnpm db:studio
+```
+
+### Test Accounts
+
+After seeding, you can create customer accounts using Gmail addresses. Admin accounts can use any email domain.
+
+## 🗂️ Project Structure
+
+```
+├── src/
+│   ├── app/                 # Next.js App Router
+│   │   ├── (routes)/        # Application routes
+│   │   ├── admin/           # Admin dashboard
+│   │   ├── api/             # API routes
+│   │   ├── dashboard/       # User dashboard
+│   │   └── login/           # Auth pages
+│   ├── components/          # UI components (shadcn)
+│   ├── lib/                 # Utilities
+│   │   ├── auth.ts         # Better Auth config
+│   │   ├── auth-client.ts  # Auth client
+│   │   ├── db-types.ts     # Database types
+│   │   ├── env.ts          # Environment validation
+│   │   └── prisma.ts       # Prisma client
+│   └── generated/          # Generated Prisma client
+├── prisma/
+│   ├── schema.prisma       # Database schema
+│   ├── seed.ts            # Seed data
+│   └── config.ts          # Prisma config
+└── docker-compose.yml     # PostgreSQL setup
+```
+
+## 🔐 Authentication Flow
+
+1. **Registration**: Users sign up with Gmail-only email validation
+2. **Email Verification**: Verification email sent via Resend
+3. **Login**: Email/password authentication
+4. **Session Management**: 7-day sessions with Better Auth
+5. **Role-based Access**: Admin vs Customer routes protected
+
+## 🎨 Key Components
+
+### User Flow
+- Landing Page → Register/Login → Dashboard → Menu → Cart → Checkout → Orders
+
+### Admin Flow
+- Login → Admin Dashboard → Orders (with pagination and status updates)
+
+## 🚦 Order Status Flow
+
+```
+PENDING → CONFIRMED → PREPARING → OUT_FOR_DELIVERY → DELIVERED
+    ↓
+CANCELLED
+```
+
+## 📧 Email Configuration
+
+The app uses Resend for transactional emails:
+- Welcome/verification emails
+- Password reset emails
+
+**Note**: Update the `EMAIL_FROM` in `.env` to your verified domain once domain verification is complete in Resend.
+
+## 🔧 Available Scripts
+
+```bash
+pnpm dev          # Start development server
+pnpm build        # Build for production
+pnpm start        # Start production server
+pnpm lint         # Run ESLint
+
+# Database
+pnpm db:generate  # Generate Prisma client
+pnpm db:migrate   # Run migrations
+pnpm db:seed      # Seed database
+pnpm db:studio    # Open Prisma Studio
+```
+
+## 🐛 Troubleshooting
+
+### Prisma Client Issues
+```bash
+# Regenerate client
+pnpm db:generate
+```
+
+### Database Connection
+```bash
+# Check if PostgreSQL is running
+docker-compose ps
+
+# Restart database
+docker-compose down
+docker-compose up -d
+```
+
+### Reset Database
+```bash
+# Clear all data and start fresh
+docker-compose down -v
+docker-compose up -d
+pnpm db:migrate
+pnpm db:seed
+```
+
+## 🚀 Deployment
+
+### Environment Variables for Production
+
+```env
+DATABASE_URL="postgresql://user:password@your-neon-db.neon.tech/pizza_palace?sslmode=require"
+BETTER_AUTH_SECRET="your-production-secret"
+BETTER_AUTH_URL="https://your-domain.com"
+RESEND_API_KEY="your-resend-api-key"
+EMAIL_FROM="noreply@yourdomain.com"
+```
+
+### Build
+
+```bash
+pnpm build
+```
+
+## 📄 License
+
+MIT License - feel free to use this project for your own pizza business!
+
+## 🙏 Credits
+
+Built with ❤️ using:
+- [Next.js](https://nextjs.org)
+- [Better Auth](https://better-auth.com)
+- [Prisma](https://prisma.io)
+- [shadcn/ui](https://ui.shadcn.com)
+- [Resend](https://resend.com)
+# Pizza-Palace
