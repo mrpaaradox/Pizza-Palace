@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum PizzaSize {
+  SMALL
+  MEDIUM
+  LARGE
+  XLARGE
+}
+
+model User {
+  id            String    @id
+  name          String?
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          Role      @default(CUSTOMER)
+  phone         String?
+  address       String?
+  city          String?
+  postalCode    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+  orders        Order[]
+  cartItems     CartItem[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                String    @id
+  userId            String
+  accountId         String
+  providerId        String
+  accessToken       String?
+  refreshToken      String?
+  idToken           String?
+  expiresAt         DateTime?
+  password          String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verifications")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  image       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String
+  price       Decimal   @db.Decimal(10, 2)
+  image       String
+  categoryId  String
+  isAvailable Boolean   @default(true)
+  isFeatured  Boolean   @default(false)
+  prepTime    Int?      // in minutes
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  category    Category  @relation(fields: [categoryId], references: [id])
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  userId        String
+  status        OrderStatus @default(PENDING)
+  total         Decimal     @db.Decimal(10, 2)
+  address       String
+  city          String
+  postalCode    String
+  phone         String
+  notes         String?
+  estimatedDelivery DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user          User        @relation(fields: [userId], references: [id])
+  items         OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String    @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal   @db.Decimal(10, 2)
+  size      PizzaSize @default(MEDIUM)
+
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model CartItem {
+  id        String    @id @default(cuid())
+  userId    String
+  productId String
+  quantity  Int       @default(1)
+  size      PizzaSize @default(MEDIUM)
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId, size])
+  @@map("cart_items")
+}
