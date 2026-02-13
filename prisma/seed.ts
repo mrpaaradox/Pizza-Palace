@@ -125,7 +125,7 @@ const products = [
     description: "Crispy wings tossed in buffalo sauce",
     price: 8.99,
     categorySlug: "sides",
-    image: "https://images.unsplash.com/photo-1608039829572-9c8ee9d14ce6?w=800",
+    image: "https://images.unsplash.com/photo-1529059997568-3d847b1154f0?w=800",
   },
   {
     name: "Chocolate Cake",
