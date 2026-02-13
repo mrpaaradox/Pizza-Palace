@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import MenuClient from "./menu-client";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 30;
+
 export default async function MenuPage() {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -26,5 +29,13 @@ export default async function MenuPage() {
     orderBy: { name: "asc" },
   });
 
-  return <MenuClient categories={categories} />;
+  const serializedCategories = categories.map((category) => ({
+    ...category,
+    products: category.products.map((product) => ({
+      ...product,
+      price: Number(product.price),
+    })),
+  }));
+
+  return <MenuClient categories={serializedCategories} />;
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useCart } from "@/lib/cart-context";
 
 interface UpdateCartItemProps {
   itemId: string;
@@ -13,6 +14,7 @@ interface UpdateCartItemProps {
 
 export default function UpdateCartItem({ itemId, currentQuantity }: UpdateCartItemProps) {
   const router = useRouter();
+  const { updateItemQuantity } = useCart();
   const [quantity, setQuantity] = useState(currentQuantity);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -38,8 +40,7 @@ export default function UpdateCartItem({ itemId, currentQuantity }: UpdateCartIt
       }
 
       setQuantity(newQuantity);
-      router.refresh();
-      toast.success("Cart updated");
+      updateItemQuantity(itemId, newQuantity);
     } catch (error) {
       toast.error("Failed to update cart");
     } finally {

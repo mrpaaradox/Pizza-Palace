@@ -216,18 +216,19 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Products</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Products</h1>
           <p className="text-gray-600 mt-1">Manage your pizza menu</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={() => setShowCategoryForm(true)}
             className="border-red-500 text-red-500 hover:bg-red-50"
           >
-            Add Category
+            <span className="sm:hidden">Category</span>
+            <span className="hidden sm:inline">Add Category</span>
           </Button>
           {!showForm && (
             <Button
@@ -235,7 +236,8 @@ export default function AdminProductsPage() {
               className="bg-red-500 hover:bg-red-600"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Product
+              <span className="sm:hidden">Add</span>
+              <span className="hidden sm:inline">Add Product</span>
             </Button>
           )}
         </div>

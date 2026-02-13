@@ -33,6 +33,7 @@ export default function UpdateOrderStatus({ orderId, currentStatus }: UpdateOrde
   const handleUpdateStatus = async () => {
     if (status === currentStatus) return;
 
+    console.log("[Admin Client] Updating order status to:", status);
     setIsLoading(true);
     
     try {
@@ -44,13 +45,20 @@ export default function UpdateOrderStatus({ orderId, currentStatus }: UpdateOrde
         body: JSON.stringify({ status }),
       });
 
+      console.log("[Admin Client] Response status:", response.status);
+      
       if (!response.ok) {
+        const error = await response.json();
+        console.error("[Admin Client] Error:", error);
         throw new Error("Failed to update order status");
       }
 
+      const data = await response.json();
+      console.log("[Admin Client] Success:", data);
       toast.success("Order status updated");
-      window.location.reload();
+      // Don't reload - let real-time update handle it
     } catch (error) {
+      console.error("[Admin Client] Error updating status:", error);
       toast.error("Failed to update order status");
       setStatus(currentStatus);
     } finally {

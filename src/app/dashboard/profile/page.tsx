@@ -19,16 +19,16 @@ import { toast } from "sonner";
 import { useSession } from "@/lib/auth-client";
 
 const COUNTRIES = [
-  { code: "+1", name: "United States", flag: "🇺🇸", postalLength: 5 },
-  { code: "+1", name: "Canada", flag: "🇨🇦", postalLength: 6 },
-  { code: "+44", name: "United Kingdom", flag: "🇬🇧", postalLength: 6 },
-  { code: "+91", name: "India", flag: "🇮🇳", postalLength: 6 },
-  { code: "+61", name: "Australia", flag: "🇦🇺", postalLength: 4 },
-  { code: "+49", name: "Germany", flag: "🇩🇪", postalLength: 5 },
-  { code: "+33", name: "France", flag: "🇫🇷", postalLength: 5 },
-  { code: "+81", name: "Japan", flag: "🇯🇵", postalLength: 7 },
-  { code: "+86", name: "China", flag: "🇨🇳", postalLength: 6 },
-  { code: "+82", name: "South Korea", flag: "🇰🇷", postalLength: 5 },
+  { code: "+1", name: "United States", flag: "🇺🇸", postalLength: 5, key: "+1-US" },
+  { code: "+1", name: "Canada", flag: "🇨🇦", postalLength: 6, key: "+1-CA" },
+  { code: "+44", name: "United Kingdom", flag: "🇬🇧", postalLength: 6, key: "+44" },
+  { code: "+91", name: "India", flag: "🇮🇳", postalLength: 6, key: "+91" },
+  { code: "+61", name: "Australia", flag: "🇦🇺", postalLength: 4, key: "+61" },
+  { code: "+49", name: "Germany", flag: "🇩🇪", postalLength: 5, key: "+49" },
+  { code: "+33", name: "France", flag: "🇫🇷", postalLength: 5, key: "+33" },
+  { code: "+81", name: "Japan", flag: "🇯🇵", postalLength: 7, key: "+81" },
+  { code: "+86", name: "China", flag: "🇨🇳", postalLength: 6, key: "+86" },
+  { code: "+82", name: "South Korea", flag: "🇰🇷", postalLength: 5, key: "+82" },
 ];
 
 export default function ProfilePage() {
@@ -37,7 +37,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0].code);
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0].key);
   const [formData, setFormData] = useState({
     phone: "",
     address: "",
@@ -45,7 +45,7 @@ export default function ProfilePage() {
     postalCode: "",
   });
 
-  const currentCountry = COUNTRIES.find(c => c.code === selectedCountry) || COUNTRIES[0];
+  const currentCountry = COUNTRIES.find(c => c.key === selectedCountry) || COUNTRIES[0];
 
   const fetchUserProfile = useCallback(async () => {
     try {
@@ -58,7 +58,7 @@ export default function ProfilePage() {
         if (userData.phone) {
           const matchedCountry = COUNTRIES.find(c => userData.phone.startsWith(c.code));
           if (matchedCountry) {
-            setSelectedCountry(matchedCountry.code);
+            setSelectedCountry(matchedCountry.key);
             setFormData({
               phone: userData.phone.replace(matchedCountry.code, ""),
               address: userData.address || "",
@@ -115,7 +115,7 @@ export default function ProfilePage() {
     setIsSaving(true);
 
     try {
-      const fullPhone = `${selectedCountry}${formData.phone}`;
+      const fullPhone = `${currentCountry.code}${formData.phone}`;
       
       const response = await fetch("/api/user/profile", {
         method: "PUT",
@@ -219,12 +219,12 @@ export default function ProfilePage() {
                   <Select value={selectedCountry} onValueChange={setSelectedCountry}>
                     <SelectTrigger className="w-24 h-10 bg-gray-50 border-gray-200">
                       <SelectValue>
-                        {COUNTRIES.find(c => c.code === selectedCountry)?.flag} {selectedCountry}
+                        {COUNTRIES.find(c => c.key === selectedCountry)?.flag} {COUNTRIES.find(c => c.key === selectedCountry)?.code}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="w-32">
                       {COUNTRIES.map((country) => (
-                        <SelectItem key={country.code} value={country.code} className="py-2">
+                        <SelectItem key={country.key} value={country.key} className="py-2">
                           {country.flag} {country.code}
                         </SelectItem>
                       ))}

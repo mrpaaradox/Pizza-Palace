@@ -4,27 +4,29 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Check, Minus } from "lucide-react";
 import { toast } from "sonner";
+import { useCart } from "@/lib/cart-context";
 
 interface AddToCartButtonProps {
   productId: string;
   productName: string;
 }
 
-export default function AddToCartButton({ productId, productName }: AddToCartButtonProps) {
+export default function AddToCartButton({
+  productId,
+  productName,
+}: AddToCartButtonProps) {
+  const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
   const handleAddToCart = async () => {
-    // Optimistic UI - show added immediately
     setAdded(true);
     toast.success(`Added ${quantity} to cart!`, {
       description: `${quantity}x ${productName}`,
       duration: 2000,
     });
-    
-    // Reset quantity after adding
+
     setQuantity(1);
-    
     setTimeout(() => setAdded(false), 1500);
 
     try {
@@ -35,7 +37,7 @@ export default function AddToCartButton({ productId, productName }: AddToCartBut
         },
         body: JSON.stringify({
           productId,
-          quantity: quantity,
+          quantity,
           size: "MEDIUM",
         }),
       });
@@ -43,6 +45,10 @@ export default function AddToCartButton({ productId, productName }: AddToCartBut
       if (!response.ok) {
         throw new Error("Failed to add to cart");
       }
+
+      const res = await fetch("/api/cart");
+      const cartData = await res.json();
+      addItem(cartData[cartData.length - 1]);
     } catch (error) {
       toast.error("Failed to add to cart", {
         description: "Please try again.",
@@ -76,7 +82,9 @@ export default function AddToCartButton({ productId, productName }: AddToCartBut
         >
           <Minus className="h-4 w-4" />
         </Button>
-        <span className="w-8 text-center font-semibold text-gray-900">{quantity}</span>
+        <span className="w-8 text-center font-semibold text-gray-900">
+          {quantity}
+        </span>
         <Button
           type="button"
           variant="ghost"
@@ -94,8 +102,8 @@ export default function AddToCartButton({ productId, productName }: AddToCartBut
         onClick={handleAddToCart}
         disabled={added}
         className={`w-full transition-all duration-200 ${
-          added 
-            ? "bg-green-500 hover:bg-green-600" 
+          added
+            ? "bg-green-500 hover:bg-green-600"
             : "bg-red-500 hover:bg-red-600 active:scale-[0.98]"
         }`}
       >
@@ -105,10 +113,7 @@ export default function AddToCartButton({ productId, productName }: AddToCartBut
             Added!
           </>
         ) : (
-          <>
-            <Plus className="w-4 h-4 mr-2" />
-            Add to Cart
-          </>
+          <>Add to Cart</>
         )}
       </Button>
     </div>

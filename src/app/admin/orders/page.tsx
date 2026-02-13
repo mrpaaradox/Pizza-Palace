@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Package, Search, Calendar } from "lucide-react";
+import { Package, Search, Calendar, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ExportPDFButton from "../export-pdf-button";
 
@@ -151,31 +151,53 @@ export default function AdminOrdersPage() {
     router.push(queryString ? `?${queryString}` : "/admin/orders", { scroll: false });
   }, [statusFilter, debouncedSearch, currentPage, router]);
 
-  const handleStatusUpdate = (orderId: string, newStatus: string) => {
-    setOrders(orders.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ));
-    toast.success("Order status updated!");
+  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    console.log("[Admin] Updating order:", orderId, "to", newStatus);
+    
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update order status");
+      }
+
+      const updatedOrder = await response.json();
+      console.log("[Admin] Order updated:", updatedOrder);
+      
+      setOrders(orders.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
+      ));
+      toast.success("Order status updated!");
+    } catch (error) {
+      console.error("[Admin] Error updating order:", error);
+      toast.error("Failed to update order status");
+    }
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-red-500" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Orders</h1>
           <p className="text-gray-600 mt-1">Manage and track all orders</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <div className="text-sm text-gray-500">
-            Total Orders: <span className="font-semibold">{filteredOrders.length}</span>
+            Total: <span className="font-semibold">{filteredOrders.length}</span>
           </div>
           <ExportPDFButton orders={orders} />
         </div>
@@ -240,7 +262,7 @@ export default function AdminOrdersPage() {
                         <Calendar className="w-4 h-4" />
                         {new Date(order.createdAt).toLocaleDateString()}
                       </span>
-                      <span>{new Date(order.createdAt).toLocaleTimeString()}</span>
+                      <span>{new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
                     </div>
                   </div>
                   <div className="text-right">
@@ -284,7 +306,7 @@ export default function AdminOrdersPage() {
                   <div className="text-sm text-gray-500">
                     {order.estimatedDelivery ? (
                       <span>
-                        Est. Delivery: {new Date(order.estimatedDelivery).toLocaleTimeString()}
+                        Est. Delivery: {new Date(order.estimatedDelivery).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                       </span>
                     ) : (
                       <span>No delivery estimate set</span>
@@ -313,27 +335,32 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
-          <span className="flex items-center text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
+      {totalPages > 0 && (
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-6">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-gray-600 px-2">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+          <div className="text-sm text-gray-500">
+            Showing {(currentPage - 1) * ORDERS_PER_PAGE + 1} to {Math.min(currentPage * ORDERS_PER_PAGE, filteredOrders.length)} of {filteredOrders.length} orders
+          </div>
         </div>
       )}
     </div>
