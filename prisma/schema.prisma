@@ -39,7 +39,7 @@ model User {
   email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
-  role          Role      @default(CUSTOMER)
+  role          String    @default("CUSTOMER")
   phone         String?
   address       String?
   city          String?
