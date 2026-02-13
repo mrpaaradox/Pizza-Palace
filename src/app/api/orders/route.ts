@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createPolarCheckout } from "@/lib/polar";
 
-// GET - Fetch user orders
 export async function GET(request: NextRequest) {
   try {
     const session = await auth.api.getSession({
@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
             product: true,
           },
         },
+        coupon: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -34,7 +35,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create new order from cart
 export async function POST(request: NextRequest) {
   try {
     const session = await auth.api.getSession({
@@ -45,11 +45,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Parse request body for delivery info
     const body = await request.json().catch(() => ({}));
-    const { phone, address, city, postalCode, notes } = body;
+    const { phone, address, city, postalCode, notes, couponId, paymentMethod } = body;
 
-    // Get cart items
     const cartItems = await prisma.cartItem.findMany({
       where: { userId: session.user.id },
       include: { product: true },
@@ -62,7 +60,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user details
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
     });
@@ -71,13 +68,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Use provided delivery info or fallback to user's saved info
     const deliveryPhone = phone || user.phone;
     const deliveryAddress = address || user.address;
     const deliveryCity = city || user.city;
     const deliveryPostalCode = postalCode || user.postalCode;
 
-    // Check if we have complete delivery info
     if (!deliveryPhone || !deliveryAddress || !deliveryCity || !deliveryPostalCode) {
       return NextResponse.json(
         { error: "Please provide complete delivery information", code: "INCOMPLETE_ADDRESS" },
@@ -85,35 +80,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate total
-    const subtotal = cartItems.reduce(
-      (sum, item) => sum + Number(item.product.price) * item.quantity,
+    let subtotal = cartItems.reduce(
+      (sum: number, item: any) => sum + Number(item.product.price) * item.quantity,
       0
     );
+    let discount = 0;
+    let coupon = null;
+
+    if (couponId) {
+      coupon = await prisma.coupon.findUnique({
+        where: { id: couponId },
+      });
+
+      if (coupon && coupon.isActive && (!coupon.expiresAt || new Date(coupon.expiresAt) > new Date())) {
+        if (coupon.discountType === "PERCENTAGE") {
+          discount = (subtotal * Number(coupon.discountValue)) / 100;
+        } else {
+          discount = Number(coupon.discountValue);
+        }
+        subtotal = subtotal - discount;
+      }
+    }
+
     const deliveryFee = subtotal >= 25 ? 0 : 5;
     const tax = subtotal * 0.08;
     const total = subtotal + deliveryFee + tax;
 
-    // Create order with items
-    const order = await prisma.$transaction(async (tx) => {
-      // Create order
+    const selectedPaymentMethod = paymentMethod || "ONLINE";
+
+    if (selectedPaymentMethod === "CASH_ON_DELIVERY" && total < 10) {
+      return NextResponse.json(
+        { error: "Minimum order amount of $10 required for Cash on Delivery", code: "COD_MINIMUM" },
+        { status: 400 }
+      );
+    }
+
+    const order = await prisma.$transaction(async (tx: any) => {
       const newOrder = await tx.order.create({
         data: {
           userId: session.user.id,
           status: "PENDING",
+          paymentMethod: selectedPaymentMethod,
+          subtotal: subtotal + discount,
+          deliveryFee,
+          tax,
           total,
+          discount,
+          couponId: coupon?.id || null,
           address: deliveryAddress,
           city: deliveryCity,
           postalCode: deliveryPostalCode,
           phone: deliveryPhone,
           notes: notes || null,
-          estimatedDelivery: new Date(Date.now() + 45 * 60 * 1000), // 45 mins from now
+          estimatedDelivery: new Date(Date.now() + 45 * 60 * 1000),
         },
       });
 
-      // Create order items
       await tx.orderItem.createMany({
-        data: cartItems.map((item) => ({
+        data: cartItems.map((item: any) => ({
           orderId: newOrder.id,
           productId: item.productId,
           quantity: item.quantity,
@@ -122,13 +146,59 @@ export async function POST(request: NextRequest) {
         })),
       });
 
-      // Clear cart
+      if (coupon) {
+        await tx.coupon.update({
+          where: { id: coupon.id },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
+
       await tx.cartItem.deleteMany({
         where: { userId: session.user.id },
       });
 
-      return newOrder;
+      return {
+        ...newOrder,
+        paymentMethod: selectedPaymentMethod,
+      };
     });
+
+    if (selectedPaymentMethod === "ONLINE") {
+      try {
+        const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+        
+        const checkout = await createPolarCheckout({
+          items: cartItems.map((item: any) => ({
+            name: item.product.name,
+            quantity: item.quantity,
+            price: Number(item.product.price),
+          })),
+          customerEmail: user.email,
+          customerName: user.name || undefined,
+          orderId: order.id,
+          successUrl: `${baseUrl}/dashboard/orders?payment=success&orderId=${order.id}`,
+          cancelUrl: `${baseUrl}/dashboard/cart?payment=cancelled&orderId=${order.id}`,
+        });
+
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { status: "PENDING" },
+        });
+
+        return NextResponse.json({
+          ...order,
+          checkoutUrl: checkout.url,
+          checkoutId: checkout.id,
+        });
+      } catch (polarError) {
+        console.error("Polar checkout error:", polarError);
+        return NextResponse.json({
+          ...order,
+          checkoutUrl: null,
+          error: "Failed to create payment session. Order created but payment pending.",
+        });
+      }
+    }
 
     return NextResponse.json(order);
   } catch (error) {

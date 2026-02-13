@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useCart } from "@/lib/cart-context";
 
 interface RemoveCartItemProps {
   itemId: string;
@@ -12,6 +13,7 @@ interface RemoveCartItemProps {
 
 export default function RemoveCartItem({ itemId }: RemoveCartItemProps) {
   const router = useRouter();
+  const { removeItem } = useCart();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRemove = async () => {
@@ -26,7 +28,7 @@ export default function RemoveCartItem({ itemId }: RemoveCartItemProps) {
         throw new Error("Failed to remove item");
       }
 
-      router.refresh();
+      removeItem(itemId);
       toast.success("Item removed from cart");
     } catch (error) {
       toast.error("Failed to remove item");

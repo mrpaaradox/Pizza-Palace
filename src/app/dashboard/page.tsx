@@ -18,19 +18,25 @@ export default async function DashboardPage() {
       { isFeatured: "desc" },
       { name: "asc" },
     ],
-    take: 8,
+    take: 20,
   });
 
-  const carouselProducts = products.slice(0, 5);
-  const listProducts = products.slice(5);
+  const carouselProducts = products.slice(0, 5).map(p => ({
+    ...p,
+    price: Number(p.price)
+  }));
+  const listProducts = products.slice(5).map(p => ({
+    ...p,
+    price: Number(p.price)
+  }));
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 text-white">
         <h1 className="text-2xl font-bold">
           Hey {session?.user?.name?.split(" ")[0] || "there"}! 👋
         </h1>
-        <p className="text-red-100 mt-1">
+        <p className="text-gray-300 mt-1">
           Ready to order some delicious pizza?
         </p>
       </div>
@@ -48,8 +54,8 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {listProducts.map((product) => (
               <Link key={product.id} href={`/dashboard/menu?product=${product.id}`}>
-                <Card className="overflow-hidden hover:shadow-lg transition-all cursor-pointer group">
-                  <div className="h-32 bg-gray-200 relative">
+                <Card className="overflow-hidden hover:shadow-lg transition-all cursor-pointer group rounded-xl border-0 shadow-md py-0">
+                  <div className="h-32 bg-gray-200 relative rounded-t-xl overflow-hidden">
                     {product.image ? (
                       <img
                         src={product.image}
@@ -57,8 +63,8 @@ export default async function DashboardPage() {
                         className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-red-50">
-                        <Pizza className="w-10 h-10 text-red-200" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                        <Pizza className="w-10 h-10 text-gray-400" />
                       </div>
                     )}
                   </div>
@@ -77,6 +83,7 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

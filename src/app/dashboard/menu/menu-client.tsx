@@ -70,7 +70,7 @@ export default function MenuClient({ categories }: MenuClientProps) {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {category.products.map((product) => (
-                <div key={product.id} id={`product-${product.id}`}>
+                <div key={product.id} id={`product-${product.id}`} className="h-full">
                   <ProductCard product={product} />
                 </div>
               ))}
@@ -84,16 +84,17 @@ export default function MenuClient({ categories }: MenuClientProps) {
 
 function ProductCard({ product }: { product: Product }) {
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      <div className="h-48 bg-gray-200 relative">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col rounded-xl border-0 shadow-md py-0 gap-0">
+      <div className="h-36 bg-gray-200 relative w-full rounded-t-xl overflow-hidden">
         {product.image ? (
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${product.image})` }}
+          <img
+            src={product.image}
+            alt={product.name}
+            className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-red-50">
-            <Pizza className="w-16 h-16 text-red-200" />
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+            <Pizza className="w-12 h-12 text-gray-400" />
           </div>
         )}
         {product.isFeatured && (
@@ -103,26 +104,27 @@ function ProductCard({ product }: { product: Product }) {
         )}
       </div>
       
-      <CardContent className="p-4">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-semibold text-gray-900">{product.name}</h3>
-          <span className="text-lg font-bold text-red-500">
+      <CardContent className="p-3 flex-1 flex flex-col gap-1">
+        <div className="flex justify-between items-start">
+          <h3 className="font-semibold text-gray-900 text-sm truncate flex-1">{product.name}</h3>
+          <span className="text-sm font-bold text-red-500 whitespace-nowrap ml-2">
             ${Number(product.price).toFixed(2)}
           </span>
         </div>
         
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+        <p className="text-xs text-gray-600 line-clamp-2">
           {product.description}
         </p>
         
-        {product.prepTime && (
-          <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
-            <Clock className="w-4 h-4" />
-            {product.prepTime} mins
-          </div>
-        )}
-        
-        <AddToCartButton productId={product.id} productName={product.name} />
+        <div className="flex items-center justify-between mt-auto pt-1">
+          {product.prepTime && (
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Clock className="w-3 h-3" />
+              {product.prepTime} mins
+            </div>
+          )}
+          <AddToCartButton productId={product.id} productName={product.name} />
+        </div>
       </CardContent>
     </Card>
   );

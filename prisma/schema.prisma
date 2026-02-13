@@ -1,10 +1,10 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -19,6 +19,11 @@ enum OrderStatus {
   OUT_FOR_DELIVERY
   DELIVERED
   CANCELLED
+}
+
+enum PaymentMethod {
+  ONLINE
+  CASH_ON_DELIVERY
 }
 
 enum PizzaSize {
@@ -47,6 +52,9 @@ model User {
   orders        Order[]
   cartItems     CartItem[]
 
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -61,6 +69,8 @@ model Session {
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([expiresAt])
   @@map("sessions")
 }
 
@@ -78,6 +88,8 @@ model Account {
   updatedAt         DateTime  @updatedAt
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([providerId])
   @@map("accounts")
 }
 
@@ -89,6 +101,8 @@ model Verification {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  @@index([identifier])
+  @@index([expiresAt])
   @@map("verifications")
 }
 
@@ -116,7 +130,7 @@ model Product {
   categoryId  String
   isAvailable Boolean   @default(true)
   isFeatured  Boolean   @default(false)
-  prepTime    Int?      // in minutes
+  prepTime    Int?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -124,26 +138,40 @@ model Product {
   cartItems   CartItem[]
   orderItems  OrderItem[]
 
+  @@index([categoryId])
+  @@index([isAvailable])
+  @@index([isFeatured])
+  @@index([name])
   @@map("products")
 }
 
 model Order {
-  id            String      @id @default(cuid())
+  id            String        @id @default(cuid())
   userId        String
-  status        OrderStatus @default(PENDING)
-  total         Decimal     @db.Decimal(10, 2)
+  status        OrderStatus   @default(PENDING)
+  paymentMethod PaymentMethod @default(ONLINE)
+  couponId      String?
+  discount      Decimal       @db.Decimal(10, 2) @default(0)
+  subtotal      Decimal       @db.Decimal(10, 2) @default(0)
+  deliveryFee   Decimal       @db.Decimal(10, 2) @default(0)
+  tax           Decimal       @db.Decimal(10, 2) @default(0)
+  total         Decimal       @db.Decimal(10, 2) @default(0)
   address       String
   city          String
   postalCode    String
   phone         String
   notes         String?
   estimatedDelivery DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  user          User        @relation(fields: [userId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  coupon        Coupon?       @relation(fields: [couponId], references: [id])
   items         OrderItem[]
 
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
   @@map("orders")
 }
 
@@ -158,6 +186,8 @@ model OrderItem {
   order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product   @relation(fields: [productId], references: [id])
 
+  @@index([orderId])
+  @@index([productId])
   @@map("order_items")
 }
 
@@ -172,5 +202,27 @@ model CartItem {
   product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId, size])
+  @@index([userId])
   @@map("cart_items")
+}
+
+model Coupon {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  description String?
+  discountType String   @default("PERCENTAGE")
+  discountValue Decimal @db.Decimal(10, 2)
+  minOrderAmount Decimal @db.Decimal(10, 2) @default(0)
+  maxUses    Int?
+  usedCount  Int       @default(0)
+  isActive   Boolean   @default(true)
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  orders     Order[]
+
+  @@index([code])
+  @@index([isActive])
+  @@map("coupons")
 }
