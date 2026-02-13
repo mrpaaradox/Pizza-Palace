@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "This coupon has reached its maximum usage limit" }, { status: 400 });
     }
 
-    if (subtotal && parseFloat(subtotal) < coupon.minOrderAmount) {
+    if (subtotal && parseFloat(subtotal) < Number(coupon.minOrderAmount)) {
       return NextResponse.json({ 
         error: `Minimum order amount of $${coupon.minOrderAmount} required for this coupon`,
         minOrderAmount: coupon.minOrderAmount
@@ -48,9 +48,9 @@ export async function POST(request: NextRequest) {
 
     let discountAmount = 0;
     if (coupon.discountType === "PERCENTAGE") {
-      discountAmount = (parseFloat(subtotal || "0") * parseFloat(coupon.discountValue)) / 100;
+      discountAmount = (parseFloat(subtotal || "0") * Number(coupon.discountValue)) / 100;
     } else {
-      discountAmount = parseFloat(coupon.discountValue);
+      discountAmount = Number(coupon.discountValue);
     }
 
     return NextResponse.json({
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       code: coupon.code,
       description: coupon.description,
       discountType: coupon.discountType,
-      discountValue: coupon.discountValue,
+      discountValue: Number(coupon.discountValue),
       discountAmount: discountAmount.toFixed(2),
     });
   } catch (error) {
