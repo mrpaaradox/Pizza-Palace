@@ -11,6 +11,8 @@ interface CreateCheckoutParams {
   customerEmail: string;
   customerName?: string;
   orderId: string;
+  successUrl?: string;
+  cancelUrl?: string;
 }
 
 export async function createPolarCheckout({

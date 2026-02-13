@@ -44,7 +44,6 @@ export const auth = betterAuth({
   emailVerification: {
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
-    redirectAfterVerification: "/dashboard",
     sendVerificationEmail: async ({ user, url }: { user: { email: string; name?: string | null }; url: string }) => {
       try {
         const { Resend } = await import("resend");
