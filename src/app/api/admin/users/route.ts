@@ -2,13 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+interface SessionUser {
+  role?: string | null;
+  id: string;
+  name?: string | null;
+  email?: string | null;
+}
+
+function isAdmin(sessionUser: SessionUser): boolean {
+  return sessionUser.role === "ADMIN";
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
     });
 
-    if (!session || (session.user as any).role !== "ADMIN") {
+    if (!session || !isAdmin(session.user)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -42,7 +53,7 @@ export async function POST(request: NextRequest) {
       headers: request.headers,
     });
 
-    if (!session || (session.user as any).role !== "ADMIN") {
+    if (!session || !isAdmin(session.user)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -79,9 +90,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(newUser);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create user error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create user" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to create user";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -91,7 +103,7 @@ export async function PUT(request: NextRequest) {
       headers: request.headers,
     });
 
-    if (!session || (session.user as any).role !== "ADMIN") {
+    if (!session || !isAdmin(session.user)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -142,7 +154,7 @@ export async function DELETE(request: NextRequest) {
       headers: request.headers,
     });
 
-    if (!session || (session.user as any).role !== "ADMIN") {
+    if (!session || !isAdmin(session.user)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

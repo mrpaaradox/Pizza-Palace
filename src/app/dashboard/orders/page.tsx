@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, Clock, MapPin, Phone, RefreshCw, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Package, Clock, MapPin, Phone, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useOrderUpdates } from "@/lib/use-order-updates";
 
 const statusColors: Record<string, string> = {
@@ -28,26 +29,28 @@ const statusLabels: Record<string, string> = {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const { lastUpdate, isConnected } = useOrderUpdates();
 
-  useEffect(() => {
-    async function fetchOrders() {
-      try {
-        const response = await fetch("/api/orders");
-        if (response.ok) {
-          const data = await response.json();
-          setOrders(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch orders:", error);
-      } finally {
-        setIsLoading(false);
+  const fetchOrders = async (page = 1) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/orders?page=${page}&limit=10`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(data.orders);
+        setPagination(data.pagination);
       }
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchOrders();
-  }, [refreshKey]);
+  }, []);
 
   useEffect(() => {
     if (lastUpdate?.orderId) {
@@ -61,7 +64,9 @@ export default function OrdersPage() {
     }
   }, [lastUpdate]);
 
-  if (isLoading) {
+  const isPageLoading = useMemo(() => isLoading, [isLoading]);
+
+  if (isLoading && orders.length === 0) {
     return (
       <div className="space-y-6">
         <div>
@@ -93,9 +98,9 @@ export default function OrdersPage() {
               You haven&apos;t placed any orders yet. Browse our menu and place your first order!
             </p>
             <Link href="/dashboard/menu">
-              <button type="button" className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg">
+              <Button className="bg-red-500 hover:bg-red-600">
                 Browse Menu
-              </button>
+              </Button>
             </Link>
           </CardContent>
         </Card>
@@ -178,6 +183,30 @@ export default function OrdersPage() {
           </Card>
         ))}
       </div>
+
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchOrders(pagination.page - 1)}
+            disabled={pagination.page === 1 || isLoading}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-sm text-gray-600">
+            Page {pagination.page} of {pagination.totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchOrders(pagination.page + 1)}
+            disabled={pagination.page === pagination.totalPages || isLoading}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
