@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useId } from "react";
+import { useState, useId } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,27 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Tag, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-
-interface Coupon {
-  id: string;
-  code: string;
-  description: string | null;
-  discountType: string;
-  discountValue: number;
-  minOrderAmount: number;
-  maxUses: number | null;
-  usedCount: number;
-  isActive: boolean;
-  expiresAt: string | null;
-  createdAt: string;
-}
+import { trpc } from "@/lib/trpc";
 
 export default function AdminCouponsPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const utils = trpc.useUtils();
   const [showForm, setShowForm] = useState(false);
-  const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+  const [editingCoupon, setEditingCoupon] = useState<any>(null);
   const [formData, setFormData] = useState({
     code: "",
     description: "",
@@ -41,35 +25,45 @@ export default function AdminCouponsPage() {
     isActive: true,
   });
 
-  const codeId = useId();
-  const descId = useId();
-  const discountTypeId = useId();
-  const discountValueId = useId();
-  const minOrderId = useId();
-  const maxUsesId = useId();
-  const expiresAtId = useId();
+  const { data: couponsData, isLoading } = trpc.coupons.adminGetAll.useQuery();
+  
+  const createCouponMutation = trpc.coupons.adminCreate.useMutation({
+    onSuccess: () => {
+      toast.success("Coupon created!");
+      utils.coupons.adminGetAll.invalidate();
+      handleCancel();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
-  const fetchCoupons = useCallback(async () => {
-    try {
-      const response = await fetch("/api/admin/coupons");
-      if (response.ok) {
-        const data = await response.json();
-        setCoupons(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch coupons:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const updateCouponMutation = trpc.coupons.adminUpdate.useMutation({
+    onSuccess: () => {
+      toast.success("Coupon updated!");
+      utils.coupons.adminGetAll.invalidate();
+      handleCancel();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
-  useEffect(() => {
-    fetchCoupons();
-  }, [fetchCoupons]);
+  const deleteCouponMutation = trpc.coupons.adminDelete.useMutation({
+    onSuccess: () => {
+      toast.success("Coupon deleted!");
+      utils.coupons.adminGetAll.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Failed to delete coupon");
+    },
+  });
 
-  const handleEdit = (coupon: Coupon) => {
+  const coupons = couponsData || [];
+
+  const handleEdit = (coupon: any) => {
     setEditingCoupon(coupon);
-    const expiresAtDate = coupon.expiresAt ? coupon.expiresAt.split("T")[0] : "";
+    const expiresAtDate = coupon.expiresAt ? new Date(coupon.expiresAt).toISOString().split('T')[0] : "";
     setFormData({
       code: coupon.code,
       description: coupon.description || "",
@@ -83,25 +77,11 @@ export default function AdminCouponsPage() {
     setShowForm(true);
   };
 
-  const handleDelete = async (couponId: string) => {
+  const handleDelete = (couponId: string) => {
     if (!confirm("Are you sure you want to delete this coupon?")) {
       return;
     }
-
-    try {
-      const response = await fetch(`/api/admin/coupons?id=${couponId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete coupon");
-      }
-
-      setCoupons(coupons.filter(c => c.id !== couponId));
-      toast.success("Coupon deleted!");
-    } catch (error) {
-      toast.error("Failed to delete coupon");
-    }
+    deleteCouponMutation.mutate({ id: couponId });
   };
 
   const handleCancel = () => {
@@ -119,47 +99,34 @@ export default function AdminCouponsPage() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    
+    const data = {
+      code: formData.code,
+      description: formData.description || undefined,
+      discountType: formData.discountType as "PERCENTAGE" | "FIXED",
+      discountValue: parseFloat(formData.discountValue),
+      minOrderAmount: parseFloat(formData.minOrderAmount),
+      maxUses: formData.maxUses ? parseInt(formData.maxUses) : undefined,
+      expiresAt: formData.expiresAt || undefined,
+      isActive: formData.isActive,
+    };
 
-    try {
-      const url = "/api/admin/coupons";
-      const method = editingCoupon ? "PUT" : "POST";
-
-      const body = editingCoupon
-        ? { id: editingCoupon.id, ...formData }
-        : formData;
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `Failed to ${editingCoupon ? "update" : "create"} coupon`);
-      }
-
-      const savedCoupon = await response.json();
-      
-      if (editingCoupon) {
-        setCoupons(coupons.map(c => c.id === savedCoupon.id ? savedCoupon : c));
-        toast.success("Coupon updated!");
-      } else {
-        setCoupons([savedCoupon, ...coupons]);
-        toast.success("Coupon created!");
-      }
-      
-      handleCancel();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to save coupon";
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
+    if (editingCoupon) {
+      updateCouponMutation.mutate({ id: editingCoupon.id, ...data });
+    } else {
+      createCouponMutation.mutate(data);
     }
   };
+
+  const codeId = useId();
+  const descId = useId();
+  const discountTypeId = useId();
+  const discountValueId = useId();
+  const minOrderId = useId();
+  const maxUsesId = useId();
+  const expiresAtId = useId();
 
   if (isLoading) {
     return (
@@ -298,8 +265,12 @@ export default function AdminCouponsPage() {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit" disabled={isSubmitting} className="bg-red-500 hover:bg-red-600">
-                  {isSubmitting ? (
+                <Button 
+                  type="submit" 
+                  disabled={createCouponMutation.isPending || updateCouponMutation.isPending} 
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  {(createCouponMutation.isPending || updateCouponMutation.isPending) ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Saving...
@@ -376,7 +347,7 @@ export default function AdminCouponsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Min Order</span>
-                    <span className="font-medium">${coupon.minOrderAmount}</span>
+                    <span className="font-medium">${Number(coupon.minOrderAmount)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Uses</span>

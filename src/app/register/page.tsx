@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useState, useId, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Pizza, Loader2, Mail, Lock, User } from "lucide-react";
-import { signUp, validateGmailEmail } from "@/lib/auth-client";
+import { signUp, useSession, validateGmailEmail } from "@/lib/auth-client";
 import { toast } from "sonner";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { data: session, isPending: sessionLoading } = useSession();
   const nameId = useId();
   const emailId = useId();
   const passwordId = useId();
@@ -26,6 +27,20 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
+
+  useEffect(() => {
+    if (!sessionLoading && session?.user) {
+      router.push("/dashboard");
+    }
+  }, [session, sessionLoading, router]);
+
+  if (sessionLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

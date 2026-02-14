@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import UpdateCartItem from "./update-cart-item";
 import RemoveCartItem from "./remove-cart-item";
 import { useCart } from "@/lib/cart-context";
+import { trpc } from "@/lib/trpc";
 
 type PizzaSize = "SMALL" | "MEDIUM" | "LARGE" | "XLARGE";
 
@@ -30,7 +31,7 @@ interface Coupon {
   description: string | null;
   discountType: string;
   discountValue: number;
-  discountAmount: number;
+  discountAmount: string | number;
 }
 
 interface CartItemProps {
@@ -151,22 +152,18 @@ export default function CartPageClient() {
     };
   }, [isFreeDelivery, subtotal]);
 
+  const utils = trpc.useUtils();
+  const validateCouponMutation = trpc.coupons.validate.useMutation();
+
   const handleApplyCoupon = useCallback(async () => {
     if (!couponCode.trim()) return;
 
     setIsApplyingCoupon(true);
     try {
-      const response = await fetch("/api/coupons/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: couponCode, subtotal }),
+      const data = await validateCouponMutation.mutateAsync({
+        code: couponCode,
+        subtotal,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Invalid coupon");
-      }
 
       setAppliedCoupon(data);
       toast.success(`Coupon applied: ${data.code}`);
@@ -175,12 +172,14 @@ export default function CartPageClient() {
     } finally {
       setIsApplyingCoupon(false);
     }
-  }, [couponCode, subtotal]);
+  }, [couponCode, subtotal, validateCouponMutation]);
 
   const handleRemoveCoupon = useCallback(() => {
     setAppliedCoupon(null);
     setCouponCode("");
   }, []);
+
+  const createOrderMutation = trpc.orders.create.useMutation();
 
   const canUseCOD = total >= 10;
 
@@ -192,43 +191,33 @@ export default function CartPageClient() {
 
     setIsProcessing(true);
     try {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          couponId: appliedCoupon?.id || null,
-          paymentMethod,
-        }),
+      const orderData = await createOrderMutation.mutateAsync({
+        couponId: appliedCoupon?.id || undefined,
+        paymentMethod: paymentMethod as "ONLINE" | "CASH_ON_DELIVERY",
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.code === "INCOMPLETE_ADDRESS") {
-          toast.error("Please complete your delivery information", {
-            description: "Redirecting to profile...",
-          });
-          router.push("/dashboard/profile");
-          return;
-        }
-        if (errorData.code === "COD_MINIMUM") {
-          toast.error("Minimum order of $10 required for Cash on Delivery");
-          return;
-        }
-        throw new Error(errorData.error || "Failed to create order");
-      }
-
-      const orderData = await response.json();
       
       clearCart();
+      utils.cart.get.invalidate();
       toast.success("Order placed successfully! Pay on delivery.");
       router.push("/dashboard/orders");
       router.refresh();
     } catch (error: any) {
+      if (error.message?.includes("delivery information")) {
+        toast.error("Please complete your delivery information", {
+          description: "Redirecting to profile...",
+        });
+        router.push("/dashboard/profile");
+        return;
+      }
+      if (error.message?.includes("$10")) {
+        toast.error("Minimum order of $10 required for Cash on Delivery");
+        return;
+      }
       toast.error(error.message || "Failed to place order");
     } finally {
       setIsProcessing(false);
     }
-  }, [paymentMethod, total, appliedCoupon, clearCart, router]);
+  }, [paymentMethod, total, appliedCoupon, clearCart, router, createOrderMutation, utils]);
 
   if (cartItems.length === 0) {
     return (

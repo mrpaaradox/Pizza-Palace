@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Package, Search, Calendar, Loader2 } from "lucide-react";
+import { Package, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 import ExportPDFButton from "../export-pdf-button";
 
 const statusColors: Record<string, string> = {
@@ -36,49 +37,32 @@ const statusLabels: Record<string, string> = {
 };
 
 const ORDERS_PER_PAGE = 10;
-
-interface OrderItem {
-  id: string;
-  quantity: number;
-  price: string;
-  size: string;
-  product: {
-    name: string;
-  };
-}
-
-interface Order {
-  id: string;
-  status: string;
-  total: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  phone: string;
-  notes: string | null;
-  estimatedDelivery: string | null;
-  createdAt: string;
-  user: {
-    name: string | null;
-    email: string;
-  };
-  items: OrderItem[];
-}
-
 const statuses = ["PENDING", "CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"];
 
 export default function AdminOrdersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const utils = trpc.useUtils();
   
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "ALL");
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
 
-  // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
+
+  const { data: ordersData, isLoading } = trpc.admin.getOrders.useQuery();
+
+  const updateOrderMutation = trpc.admin.updateOrderStatus.useMutation({
+    onSuccess: () => {
+      toast.success("Order status updated!");
+      utils.admin.getOrders.invalidate();
+    },
+    onError: () => {
+      toast.error("Failed to update order status");
+    },
+  });
+
+  const orders = (ordersData || []) as any[];
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -87,35 +71,13 @@ export default function AdminOrdersPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch orders once
-  const fetchOrders = useCallback(async () => {
-    try {
-      const response = await fetch("/api/admin/orders/all");
-      if (response.ok) {
-        const data = await response.json();
-        setOrders(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch orders:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
-
-  // Filter orders client-side
   const filteredOrders = useMemo(() => {
     let result = [...orders];
 
-    // Filter by status
     if (statusFilter !== "ALL") {
       result = result.filter(order => order.status === statusFilter);
     }
 
-    // Filter by search query
     if (debouncedSearch) {
       const search = debouncedSearch.toLowerCase();
       result = result.filter(order => 
@@ -128,19 +90,16 @@ export default function AdminOrdersPage() {
     return result;
   }, [orders, statusFilter, debouncedSearch]);
 
-  // Pagination
   const totalPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE);
   const paginatedOrders = useMemo(() => {
     const start = (currentPage - 1) * ORDERS_PER_PAGE;
     return filteredOrders.slice(start, start + ORDERS_PER_PAGE);
   }, [filteredOrders, currentPage]);
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, debouncedSearch]);
 
-  // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
     if (statusFilter !== "ALL") params.set("status", statusFilter);
@@ -151,33 +110,8 @@ export default function AdminOrdersPage() {
     router.push(queryString ? `?${queryString}` : "/admin/orders", { scroll: false });
   }, [statusFilter, debouncedSearch, currentPage, router]);
 
-  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
-    console.log("[Admin] Updating order:", orderId, "to", newStatus);
-    
-    try {
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update order status");
-      }
-
-      const updatedOrder = await response.json();
-      console.log("[Admin] Order updated:", updatedOrder);
-      
-      setOrders(orders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus } : order
-      ));
-      toast.success("Order status updated!");
-    } catch (error) {
-      console.error("[Admin] Error updating order:", error);
-      toast.error("Failed to update order status");
-    }
+  const handleStatusUpdate = (orderId: string, newStatus: string) => {
+    updateOrderMutation.mutate({ orderId, status: newStatus as any });
   };
 
   if (isLoading) {
@@ -203,7 +137,6 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
@@ -233,7 +166,6 @@ export default function AdminOrdersPage() {
         </CardContent>
       </Card>
 
-      {/* Orders List */}
       <div className="space-y-4">
         {paginatedOrders.length === 0 ? (
           <Card>
@@ -247,86 +179,58 @@ export default function AdminOrdersPage() {
           paginatedOrders.map((order) => (
             <Card key={order.id}>
               <CardHeader className="pb-3">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <CardTitle className="text-lg">
-                        Order #{order.id.slice(-8).toUpperCase()}
-                      </CardTitle>
-                      <Badge className={`${statusColors[order.status]} text-white`}>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base">Order #{order.id.slice(-8)}</CardTitle>
+                      <Badge className={statusColors[order.status]}>
                         {statusLabels[order.status]}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </span>
-                      <span>{new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-red-500">
-                      ${Number(order.total).toFixed(2)}
+                    <p className="text-sm text-gray-500 mt-1">
+                      {order.user.name || order.user.email} • {new Date(order.createdAt).toLocaleString()}
                     </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={order.status}
+                      onValueChange={(value) => handleStatusUpdate(order.id, value)}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statuses.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {statusLabels[status]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                {/* Customer Info */}
-                <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                  <h4 className="font-semibold text-sm text-gray-700 mb-2">Customer</h4>
-                  <p className="text-sm">
-                    <span className="font-medium">{order.user.name || "N/A"}</span>
-                    <span className="text-gray-500"> ({order.user.email})</span>
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">{order.phone}</p>
-                  <p className="text-sm text-gray-600">
-                    {order.address}, {order.city} {order.postalCode}
-                  </p>
-                </div>
-
-                {/* Items */}
-                <div className="space-y-2 mb-4">
-                  <h4 className="font-semibold text-sm text-gray-700">Items</h4>
-                  {order.items.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span className="text-gray-700">
-                        {item.quantity}x {item.product.name} ({item.size.toLowerCase()})
-                      </span>
-                      <span className="font-medium">
-                        ${(Number(item.price) * item.quantity).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Update Status */}
-                <div className="border-t pt-4 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-                  <div className="text-sm text-gray-500">
-                    {order.estimatedDelivery ? (
-                      <span>
-                        Est. Delivery: {new Date(order.estimatedDelivery).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                      </span>
-                    ) : (
-                      <span>No delivery estimate set</span>
-                    )}
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {order.items.map((item: any) => (
+                      <Badge key={item.id} variant="outline" className="text-sm">
+                        {item.quantity}x {item.product.name} ({item.size})
+                      </Badge>
+                    ))}
                   </div>
-                  <Select
-                    value={order.status}
-                    onValueChange={(newStatus) => handleStatusUpdate(order.id, newStatus)}
-                  >
-                    <SelectTrigger className="w-full md:w-48">
-                      <SelectValue placeholder="Update status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statuses.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {statusLabels[status]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm">
+                    <div className="text-gray-500">
+                      <span>{order.address}, {order.city} {order.postalCode}</span>
+                      {order.phone && <span> • {order.phone}</span>}
+                    </div>
+                    <div className="font-bold text-lg text-red-500">
+                      ${Number(order.total).toFixed(2)}
+                    </div>
+                  </div>
+                  {order.notes && (
+                    <p className="text-sm text-gray-500 italic">Note: {order.notes}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -334,33 +238,25 @@ export default function AdminOrdersPage() {
         )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 0 && (
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-6">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-gray-600 px-2">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
-          <div className="text-sm text-gray-500">
-            Showing {(currentPage - 1) * ORDERS_PER_PAGE + 1} to {Math.min(currentPage * ORDERS_PER_PAGE, filteredOrders.length)} of {filteredOrders.length} orders
-          </div>
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(p => p - 1)}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <span className="flex items-center px-4 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(p => p + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
         </div>
       )}
     </div>
