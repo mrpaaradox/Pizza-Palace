@@ -14,9 +14,10 @@ A full-stack pizza delivery application built with Next.js, Better Auth, Prisma,
 
 ### Admin Features
 - **Dashboard Overview**: View stats (total orders, customers, revenue)
-- **Order Management**: View all orders with filtering and pagination
+- **Order Management**: View all orders with filtering, pagination, and refresh
 - **Status Updates**: Update order status (Pending → Confirmed → Preparing → Out for Delivery → Delivered)
-- **Customer Management**: View customer details
+- **Customer Management**: View, create, edit, and delete customers
+- **User Recovery**: Restore soft-deleted users and cancellation of deletion requests
 
 ## 🚀 Tech Stack
 
@@ -147,7 +148,7 @@ This project uses tRPC for type-safe APIs. Frontend and backend share types - if
 
 - **Public**: `products.getAll`, `products.getCategories`, `categories.getAll`
 - **Protected** (requires login): `cart.get`, `cart.add`, `cart.update`, `cart.remove`, `orders.get`, `orders.create`, `coupons.validate`, `profile.get`, `profile.update`
-- **Admin**: `products.adminGetAll`, `products.adminCreate`, `products.adminUpdate`, `categories.adminCreate`, `coupons.adminGetAll`, `coupons.adminCreate`, `coupons.adminUpdate`, `coupons.adminDelete`, `admin.getOrders`, `admin.updateOrderStatus`, `admin.getUsers`, `admin.getDashboardData`, `admin.getSystemStatus`, `admin.makeAdmin`
+- **Admin**: `products.adminGetAll`, `products.adminCreate`, `products.adminUpdate`, `categories.adminCreate`, `coupons.adminGetAll`, `coupons.adminCreate`, `coupons.adminUpdate`, `coupons.adminDelete`, `admin.getOrders`, `admin.updateOrderStatus`, `admin.getUsers`, `admin.createUser`, `admin.updateUser`, `admin.deleteUser`, `admin.restoreUser`, `admin.cancelDeletionRequest`, `admin.makeAdmin`, `admin.getDashboardData`, `admin.getSystemStatus`
 
 ### Using tRPC in Components
 
