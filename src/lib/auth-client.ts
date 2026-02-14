@@ -13,7 +13,6 @@ export const {
   resetPassword,
 } = authClient;
 
-// Gmail validation helper
 export const validateGmailEmail = (email: string): boolean => {
   return email.toLowerCase().endsWith("@gmail.com");
 };

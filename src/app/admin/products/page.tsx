@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
-import { useId } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,38 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Pizza, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  price: string;
-  image: string;
-  categoryId: string;
-  isAvailable: boolean;
-  isFeatured: boolean;
-  prepTime: number | null;
-  category: Category;
-}
+import { trpc } from "@/lib/trpc";
 
 export default function AdminProductsPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const utils = trpc.useUtils();
   const [showForm, setShowForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [categoryData, setCategoryData] = useState({ name: "", description: "" });
-  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -55,38 +31,47 @@ export default function AdminProductsPage() {
     prepTime: "",
   });
 
-  const fetchProducts = useCallback(async () => {
-    try {
-      const response = await fetch("/api/admin/products");
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const { data: productsData, isLoading } = trpc.products.adminGetAll.useQuery();
+  const { data: categoriesData } = trpc.categories.getAll.useQuery();
+  
+  const createProductMutation = trpc.products.adminCreate.useMutation({
+    onSuccess: () => {
+      toast.success("Product created successfully!");
+      utils.products.adminGetAll.invalidate();
+      handleCancel();
+    },
+    onError: (error) => {
+      toast.error("Failed to create product", { description: error.message });
+    },
+  });
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      const response = await fetch("/api/admin/categories");
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch categories:", error);
-    }
-  }, []);
+  const updateProductMutation = trpc.products.adminUpdate.useMutation({
+    onSuccess: () => {
+      toast.success("Product updated successfully!");
+      utils.products.adminGetAll.invalidate();
+      handleCancel();
+    },
+    onError: (error) => {
+      toast.error("Failed to update product", { description: error.message });
+    },
+  });
 
-  useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-  }, [fetchProducts, fetchCategories]);
+  const createCategoryMutation = trpc.categories.adminCreate.useMutation({
+    onSuccess: () => {
+      toast.success("Category created successfully!");
+      utils.categories.getAll.invalidate();
+      setCategoryData({ name: "", description: "" });
+      setShowCategoryForm(false);
+    },
+    onError: (error) => {
+      toast.error("Failed to create category", { description: error.message });
+    },
+  });
 
-  const handleEdit = (product: Product) => {
+  const products = productsData || [];
+  const categories = categoriesData || [];
+
+  const handleEdit = (product: any) => {
     setEditingProduct(product);
     setFormData({
       name: product.name,
@@ -116,89 +101,39 @@ export default function AdminProductsPage() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    
+    const data = {
+      name: formData.name,
+      description: formData.description,
+      price: parseFloat(formData.price),
+      image: formData.image || undefined,
+      categoryId: formData.categoryId,
+      isAvailable: formData.isAvailable,
+      isFeatured: formData.isFeatured,
+      prepTime: formData.prepTime ? parseInt(formData.prepTime) : undefined,
+    };
 
-    try {
-      const url = editingProduct ? `/api/admin/products` : "/api/admin/products";
-      const method = editingProduct ? "PUT" : "POST";
-
-      const body = editingProduct
-        ? { id: editingProduct.id, ...formData }
-        : formData;
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `Failed to ${editingProduct ? "update" : "create"} product`);
-      }
-
-      const savedProduct = await response.json();
-      
-      if (editingProduct) {
-        setProducts(products.map(p => p.id === savedProduct.id ? savedProduct : p));
-        toast.success("Product updated successfully!");
-      } else {
-        setProducts([savedProduct, ...products]);
-        toast.success("Product created successfully!");
-      }
-      
-      handleCancel();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to save product";
-      toast.error("Failed to save product", {
-        description: errorMessage,
-      });
-    } finally {
-      setIsSubmitting(false);
+    if (editingProduct) {
+      updateProductMutation.mutate({ id: editingProduct.id, ...data });
+    } else {
+      createProductMutation.mutate(data);
     }
   };
 
-  const handleCategorySubmit = async (e: React.FormEvent) => {
+  const handleCategorySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsCreatingCategory(true);
-
-    try {
-      const response = await fetch("/api/admin/categories", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(categoryData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create category");
-      }
-
-      const newCategory = await response.json();
-      setCategories([...categories, newCategory]);
-      setCategoryData({ name: "", description: "" });
-      setShowCategoryForm(false);
-      toast.success("Category created successfully!");
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create category";
-      toast.error("Failed to create category", {
-        description: errorMessage,
-      });
-    } finally {
-      setIsCreatingCategory(false);
-    }
+    createCategoryMutation.mutate({
+      name: categoryData.name,
+      description: categoryData.description || undefined,
+    });
   };
 
   const nameId = useId();
   const priceId = useId();
   const descId = useId();
-  const categoryId = useId();
+  const categoryIdSelect = useId();
   const prepTimeId = useId();
   const imageId = useId();
   const isAvailableId = useId();
@@ -243,7 +178,6 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Category Form Modal */}
       {showCategoryForm && (
         <Card>
           <CardHeader>
@@ -271,8 +205,8 @@ export default function AdminProductsPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" disabled={isCreatingCategory} className="bg-red-500 hover:bg-red-600">
-                  {isCreatingCategory ? "Creating..." : "Create Category"}
+                <Button type="submit" disabled={createCategoryMutation.isPending} className="bg-red-500 hover:bg-red-600">
+                  {createCategoryMutation.isPending ? "Creating..." : "Create Category"}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowCategoryForm(false)}>
                   Cancel
@@ -329,13 +263,13 @@ export default function AdminProductsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor={categoryId}>Category *</Label>
+                  <Label htmlFor={categoryIdSelect}>Category *</Label>
                   <Select
                     value={formData.categoryId}
                     onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
                     required
                   >
-                    <SelectTrigger id={categoryId}>
+                    <SelectTrigger id={categoryIdSelect}>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -394,8 +328,12 @@ export default function AdminProductsPage() {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit" disabled={isSubmitting} className="bg-red-500 hover:bg-red-600">
-                  {isSubmitting ? (
+                <Button 
+                  type="submit" 
+                  disabled={createProductMutation.isPending || updateProductMutation.isPending} 
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  {(createProductMutation.isPending || updateProductMutation.isPending) ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Saving...

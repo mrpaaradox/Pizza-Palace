@@ -26,7 +26,7 @@ function AddToCartButton({
   productName,
   basePrice,
 }: AddToCartButtonProps) {
-  const { addItem, setItems } = useCart();
+  const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<PizzaSize>("MEDIUM");
   const [showSizeSelector, setShowSizeSelector] = useState(false);
@@ -35,9 +35,8 @@ function AddToCartButton({
   const currentSize = SIZES.find(s => s.value === selectedSize);
   const currentPrice = basePrice * (currentSize?.priceMultiplier || 1);
 
-  const handleAddToCart = useCallback(async () => {
+  const handleAddToCart = useCallback(() => {
     const quantityToAdd = quantity;
-    const tempId = `temp-${Date.now()}`;
     
     setAdded(true);
     toast.success(`Added ${quantityToAdd}x ${selectedSize} ${productName}!`, {
@@ -46,7 +45,7 @@ function AddToCartButton({
     });
 
     const tempItem = {
-      id: tempId,
+      id: `temp-${Date.now()}`,
       quantity: quantityToAdd,
       size: selectedSize,
       product: {
@@ -62,33 +61,7 @@ function AddToCartButton({
     setSelectedSize("MEDIUM");
     setShowSizeSelector(false);
     setTimeout(() => setAdded(false), 1500);
-
-    try {
-      const response = await fetch("/api/cart", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          productId,
-          quantity: quantityToAdd,
-          size: selectedSize,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to add to cart");
-      }
-
-      const res = await fetch("/api/cart");
-      const cartData = await res.json();
-      setItems(cartData);
-    } catch (error) {
-      toast.error("Failed to add to cart", {
-        description: "Please try again.",
-      });
-    }
-  }, [productId, productName, quantity, selectedSize, currentPrice, addItem, setItems]);
+  }, [productId, productName, quantity, selectedSize, currentPrice, addItem]);
 
   const decreaseQuantity = useCallback(() => {
     if (quantity > 1) {
@@ -104,7 +77,6 @@ function AddToCartButton({
 
   return (
     <div className="space-y-2 w-full">
-      {/* Size Selector */}
       <div className="relative w-full">
         <button
           type="button"
@@ -139,7 +111,6 @@ function AddToCartButton({
         )}
       </div>
 
-      {/* Quantity Selector */}
       <div className="flex items-center justify-center gap-1 bg-gray-50 rounded-lg p-1">
         <Button
           type="button"
@@ -166,7 +137,6 @@ function AddToCartButton({
         </Button>
       </div>
 
-      {/* Add to Cart Button */}
       <Button
         onClick={handleAddToCart}
         disabled={added}

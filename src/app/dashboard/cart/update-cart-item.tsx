@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus } from "lucide-react";
-import { toast } from "sonner";
 import { useCart } from "@/lib/cart-context";
 
 interface UpdateCartItemProps {
@@ -15,35 +14,14 @@ export default function UpdateCartItem({ itemId, currentQuantity }: UpdateCartIt
   const { updateItemQuantity } = useCart();
   const [quantity, setQuantity] = useState(currentQuantity);
 
-  const updateQuantity = useCallback(async (newQuantity: number) => {
-    if (newQuantity < 1 || newQuantity === quantity) return;
+  useEffect(() => {
+    setQuantity(currentQuantity);
+  }, [currentQuantity]);
 
-    const previousQuantity = quantity;
+  const updateQuantity = useCallback((newQuantity: number) => {
+    if (newQuantity < 1 || newQuantity === quantity) return;
     setQuantity(newQuantity);
     updateItemQuantity(itemId, newQuantity);
-
-    try {
-      const response = await fetch("/api/cart", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          itemId,
-          quantity: newQuantity,
-        }),
-      });
-
-      if (!response.ok) {
-        setQuantity(previousQuantity);
-        updateItemQuantity(itemId, previousQuantity);
-        throw new Error("Failed to update cart");
-      }
-    } catch (error) {
-      setQuantity(previousQuantity);
-      updateItemQuantity(itemId, previousQuantity);
-      toast.error("Failed to update cart");
-    }
   }, [itemId, quantity, updateItemQuantity]);
 
   return (

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { trpc } from "@/lib/trpc";
+import { useCart } from "@/lib/cart-context";
 
 interface CheckoutButtonProps {
   itemCount: number;
@@ -12,38 +14,21 @@ interface CheckoutButtonProps {
 
 export default function CheckoutButton({ itemCount }: CheckoutButtonProps) {
   const router = useRouter();
+  const { clearCart } = useCart();
+  const utils = trpc.useUtils();
   const [isLoading, setIsLoading] = useState(false);
+  
+  const createOrderMutation = trpc.orders.create.useMutation();
 
   const handleCheckout = async () => {
     setIsLoading(true);
-    
     try {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      await createOrderMutation.mutateAsync({
+        paymentMethod: "CASH_ON_DELIVERY",
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.error || "Failed to create order";
-        const errorCode = errorData.code;
-        
-        if (errorCode === "INCOMPLETE_ADDRESS") {
-          toast.error("Please complete your delivery information", {
-            description: "Redirecting to profile...",
-          });
-          router.push("/dashboard/profile");
-          setIsLoading(false);
-          return;
-        }
-        
-        throw new Error(errorMessage);
-      }
-
-      const order = await response.json();
       
+      clearCart();
+      utils.cart.get.invalidate();
       toast.success("Order placed successfully!", {
         description: "You can track your order in the orders page.",
       });
@@ -51,7 +36,7 @@ export default function CheckoutButton({ itemCount }: CheckoutButtonProps) {
       router.push("/dashboard/orders");
       router.refresh();
     } catch (error: any) {
-      if (error.message?.includes("complete delivery information") || error.message?.includes("INCOMPLETE_ADDRESS")) {
+      if (error.message?.includes("complete delivery information") || error.message?.includes("delivery")) {
         toast.error("Please complete your delivery information", {
           description: "Redirecting to profile...",
         });

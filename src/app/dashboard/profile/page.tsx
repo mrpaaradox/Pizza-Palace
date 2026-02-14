@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, MapPin, Phone, Building, Home, Loader2, CheckCircle } from "lucide-react";
+import { User, MapPin, Phone, Building, Home, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useSession } from "@/lib/auth-client";
+import { trpc } from "@/lib/trpc";
 
 const COUNTRIES = [
   { code: "+1", name: "United States", flag: "🇺🇸", postalLength: 5, key: "+1-US" },
@@ -33,10 +33,7 @@ const COUNTRIES = [
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { data: session, isPending } = useSession();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const utils = trpc.useUtils();
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0].key);
   const [formData, setFormData] = useState({
     phone: "",
@@ -45,60 +42,62 @@ export default function ProfilePage() {
     postalCode: "",
   });
 
+  const { data: profileData, isLoading, error } = trpc.profile.get.useQuery();
+
+  const updateProfileMutation = trpc.profile.update.useMutation({
+    onSuccess: () => {
+      toast.success("Profile updated!", {
+        description: "Your delivery information has been saved.",
+      });
+      utils.profile.get.invalidate();
+    },
+    onError: (err) => {
+      if (err.message?.includes("Unauthorized")) {
+        router.push("/login");
+        return;
+      }
+      toast.error("Failed to update profile", {
+        description: err.message,
+      });
+    },
+  });
+
   const currentCountry = COUNTRIES.find(c => c.key === selectedCountry) || COUNTRIES[0];
 
-  const fetchUserProfile = useCallback(async () => {
-    try {
-      const response = await fetch("/api/user/profile");
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        
-        // Parse phone to extract country code
-        if (userData.phone) {
-          const matchedCountry = COUNTRIES.find(c => userData.phone.startsWith(c.code));
-          if (matchedCountry) {
-            setSelectedCountry(matchedCountry.key);
-            setFormData({
-              phone: userData.phone.replace(matchedCountry.code, ""),
-              address: userData.address || "",
-              city: userData.city || "",
-              postalCode: userData.postalCode || "",
-            });
-          } else {
-            setFormData({
-              phone: userData.phone || "",
-              address: userData.address || "",
-              city: userData.city || "",
-              postalCode: userData.postalCode || "",
-            });
-          }
-        } else {
-          setFormData({
-            phone: userData.phone || "",
-            address: userData.address || "",
-            city: userData.city || "",
-            postalCode: userData.postalCode || "",
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch profile:", error);
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (error?.message?.includes("Unauthorized")) {
+      router.push("/login");
     }
-  }, []);
+  }, [error, router]);
 
   useEffect(() => {
-    if (!isPending && !session) {
-      router.push("/login");
-      return;
+    if (profileData?.phone) {
+      const country = COUNTRIES.find(c => profileData.phone?.startsWith(c.code));
+      if (country) {
+        setSelectedCountry(country.key);
+        setFormData({
+          phone: profileData.phone.replace(country.code, ""),
+          address: profileData.address || "",
+          city: profileData.city || "",
+          postalCode: profileData.postalCode || "",
+        });
+      } else {
+        setFormData({
+          phone: profileData.phone || "",
+          address: profileData.address || "",
+          city: profileData.city || "",
+          postalCode: profileData.postalCode || "",
+        });
+      }
+    } else if (profileData) {
+      setFormData({
+        phone: profileData.phone || "",
+        address: profileData.address || "",
+        city: profileData.city || "",
+        postalCode: profileData.postalCode || "",
+      });
     }
-
-    if (session?.user) {
-      fetchUserProfile();
-    }
-  }, [session, isPending, router, fetchUserProfile]);
+  }, [profileData]);
 
   const handlePhoneChange = (value: string) => {
     const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
@@ -112,39 +111,17 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
-
-    try {
-      const fullPhone = `${currentCountry.code}${formData.phone}`;
-      
-      const response = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phone: fullPhone,
-          address: formData.address,
-          city: formData.city,
-          postalCode: formData.postalCode,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update profile");
-      }
-
-      toast.success("Profile updated!", {
-        description: "Your delivery information has been saved.",
-      });
-    } catch (error) {
-      toast.error("Failed to update profile");
-    } finally {
-      setIsSaving(false);
-    }
+    const fullPhone = `${currentCountry.code}${formData.phone}`;
+    
+    updateProfileMutation.mutate({
+      phone: fullPhone,
+      address: formData.address,
+      city: formData.city,
+      postalCode: formData.postalCode,
+    });
   };
 
-  if (isPending || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 animate-spin text-red-500" />
@@ -170,7 +147,6 @@ export default function ProfilePage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Account Information */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -181,26 +157,19 @@ export default function ProfilePage() {
           <CardContent className="space-y-4">
             <div>
               <Label className="text-gray-500">Name</Label>
-              <p className="font-medium">{user?.name || "Not set"}</p>
+              <p className="font-medium">{profileData?.name || "Not set"}</p>
             </div>
             <div>
               <Label className="text-gray-500">Email</Label>
-              <p className="font-medium">{user?.email}</p>
+              <p className="font-medium">{profileData?.email}</p>
             </div>
             <div>
               <Label className="text-gray-500">Role</Label>
-              <p className="font-medium capitalize">{user?.role?.toLowerCase()}</p>
+              <p className="font-medium capitalize">{profileData?.role?.toLowerCase()}</p>
             </div>
-            {user?.emailVerified && (
-              <div className="flex items-center gap-2 text-green-600">
-                <CheckCircle className="w-4 h-4" />
-                <span className="text-sm">Email verified</span>
-              </div>
-            )}
           </CardContent>
         </Card>
 
-        {/* Delivery Address */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -292,9 +261,9 @@ export default function ProfilePage() {
               <Button 
                 type="submit" 
                 className="w-full bg-red-500 hover:bg-red-600"
-                disabled={isSaving}
+                disabled={updateProfileMutation.isPending}
               >
-                {isSaving ? (
+                {updateProfileMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Saving...
