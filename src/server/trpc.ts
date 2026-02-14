@@ -39,8 +39,19 @@ const enforceUserIsAdmin = t.middleware(async ({ ctx, next }) => {
   if (!ctx.session?.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  if ((ctx.session.user as any).role !== "ADMIN") {
-    throw new TRPCError({ code: "FORBIDDEN" });
+  
+  const userId = ctx.session.user.id;
+  if (!userId) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "User ID not found in session" });
+  }
+  
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  
+  if (!user || user.role !== "ADMIN") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
   return next({
     ctx: {

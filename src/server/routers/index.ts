@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, publicProcedure, protectedProcedure, adminProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { createPolarCheckout } from "@/lib/polar";
+import { auth } from "@/lib/auth";
 
 const PizzaSizeSchema = z.enum(["SMALL", "MEDIUM", "LARGE", "XLARGE"]);
 const OrderStatusSchema = z.enum(["PENDING", "CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"]);
@@ -620,10 +621,12 @@ export const appRouter = router({
           city: true,
           postalCode: true,
           createdAt: true,
+          deletionRequestedAt: true,
+          deletedAt: true,
         },
       });
 
-      if (!user) {
+      if (!user || user.deletedAt) {
         throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
       }
 
@@ -660,6 +663,23 @@ export const appRouter = router({
           },
         });
       }),
+
+    requestDeletion: protectedProcedure.mutation(async ({ ctx }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.user.id },
+      });
+
+      if (!user || user.deletedAt) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      }
+
+      await ctx.prisma.user.update({
+        where: { id: ctx.user.id },
+        data: { deletionRequestedAt: new Date() },
+      });
+
+      return { success: true };
+    }),
   }),
 
   admin: router({
@@ -704,17 +724,75 @@ export const appRouter = router({
           id: true,
           name: true,
           email: true,
+          originalEmail: true,
           role: true,
           phone: true,
           address: true,
           city: true,
+          postalCode: true,
           createdAt: true,
+          deletedAt: true,
+          deletionRequestedAt: true,
           _count: { select: { orders: true } },
         },
         orderBy: { createdAt: "desc" },
       });
       return users;
     }),
+
+    createUser: adminProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        email: z.string().email(),
+        password: z.string().min(6),
+        phone: z.string().optional(),
+        address: z.string().optional(),
+        city: z.string().optional(),
+        postalCode: z.string().optional(),
+        role: z.enum(["ADMIN", "CUSTOMER"]).default("CUSTOMER"),
+        emailVerified: z.boolean().default(false),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { phone, address, city, postalCode, emailVerified, ...userData } = input;
+
+        const existingUser = await ctx.prisma.user.findUnique({
+          where: { email: input.email },
+        });
+
+        if (existingUser) {
+          throw new TRPCError({ code: "CONFLICT", message: "User with this email already exists" });
+        }
+
+        const newUser = await auth.api.createUser({
+          body: {
+            name: userData.name,
+            email: userData.email,
+            password: userData.password,
+            role: userData.role === "ADMIN" ? "admin" : "user",
+          },
+        });
+
+        if (emailVerified) {
+          await ctx.prisma.user.update({
+            where: { id: newUser.user.id },
+            data: { emailVerified: true },
+          });
+        }
+
+        if (phone || address || city || postalCode) {
+          await ctx.prisma.user.update({
+            where: { id: newUser.user.id },
+            data: {
+              phone: phone || null,
+              address: address || null,
+              city: city || null,
+              postalCode: postalCode || null,
+            },
+          });
+        }
+
+        return newUser;
+      }),
 
     getDashboardData: protectedProcedure.query(async ({ ctx }) => {
       const [products, categories, orders] = await Promise.all([
@@ -762,10 +840,171 @@ export const appRouter = router({
     makeAdmin: adminProcedure
       .input(z.object({ userId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
+        const user = await ctx.prisma.user.findUnique({
+          where: { id: input.userId },
+        });
+
+        if (!user) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+
+        if (user.role === "ADMIN") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "User is already an admin" });
+        }
+
         return ctx.prisma.user.update({
           where: { id: input.userId },
           data: { role: "ADMIN" },
         });
+      }),
+
+    updateUser: adminProcedure
+      .input(z.object({
+        userId: z.string().min(1),
+        name: z.string().min(1),
+        email: z.string().email(),
+        phone: z.string().optional(),
+        address: z.string().optional(),
+        city: z.string().optional(),
+        postalCode: z.string().optional(),
+        role: z.enum(["ADMIN", "CUSTOMER"]).default("CUSTOMER"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { userId, ...data } = input;
+        
+        const user = await ctx.prisma.user.findUnique({
+          where: { id: userId },
+        });
+
+        if (!user) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+
+        if (user.deletedAt) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot update a deleted user. Restore them first." });
+        }
+
+        const existingUser = await ctx.prisma.user.findFirst({
+          where: {
+            email: input.email,
+            NOT: { id: userId },
+          },
+        });
+
+        if (existingUser) {
+          throw new TRPCError({ code: "CONFLICT", message: "Email already in use by another user" });
+        }
+
+        return ctx.prisma.user.update({
+          where: { id: userId },
+          data: {
+            name: data.name,
+            email: data.email,
+            phone: data.phone || null,
+            address: data.address || null,
+            city: data.city || null,
+            postalCode: data.postalCode || null,
+            role: data.role,
+          },
+        });
+      }),
+
+    deleteUser: adminProcedure
+      .input(z.object({ userId: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await ctx.prisma.user.findUnique({
+          where: { id: input.userId },
+        });
+
+        if (!user) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+
+        if (user.id === ctx.user.id) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete your own account" });
+        }
+
+        await ctx.prisma.$transaction([
+          ctx.prisma.session.deleteMany({
+            where: { userId: input.userId },
+          }),
+          ctx.prisma.account.deleteMany({
+            where: { userId: input.userId },
+          }),
+          ctx.prisma.verification.deleteMany({
+            where: { identifier: user.email },
+          }),
+          ctx.prisma.user.update({
+            where: { id: input.userId },
+            data: { 
+              deletedAt: new Date(),
+              deletionRequestedAt: null,
+              originalEmail: user.email,
+              email: `deleted_${user.id}@deleted.local`,
+            },
+          }),
+        ]);
+
+        return { success: true };
+      }),
+
+    cancelDeletionRequest: adminProcedure
+      .input(z.object({ userId: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await ctx.prisma.user.findUnique({
+          where: { id: input.userId },
+        });
+
+        if (!user) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+
+        if (user.deletedAt && user.originalEmail) {
+          await ctx.prisma.user.update({
+            where: { id: input.userId },
+            data: { 
+              deletedAt: null,
+              deletionRequestedAt: null,
+              email: user.originalEmail,
+              originalEmail: null,
+            },
+          });
+        } else {
+          await ctx.prisma.user.update({
+            where: { id: input.userId },
+            data: { deletionRequestedAt: null },
+          });
+        }
+
+        return { success: true };
+      }),
+
+    restoreUser: adminProcedure
+      .input(z.object({ userId: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await ctx.prisma.user.findUnique({
+          where: { id: input.userId },
+        });
+
+        if (!user) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+
+        if (!user.originalEmail) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot restore user - original email not found" });
+        }
+
+        await ctx.prisma.user.update({
+          where: { id: input.userId },
+          data: { 
+            deletedAt: null,
+            deletionRequestedAt: null,
+            email: user.originalEmail,
+            originalEmail: null,
+          },
+        });
+
+        return { success: true };
       }),
 
     getSystemStatus: adminProcedure.query(async ({ ctx }) => {
