@@ -23,6 +23,7 @@ A full-stack pizza delivery application built with Next.js, Better Auth, Prisma,
 - **Framework**: Next.js 16 with App Router
 - **Authentication**: Better Auth with email/password
 - **Database**: PostgreSQL with Prisma ORM
+- **API**: tRPC for type-safe APIs (FE/BE share types)
 - **Email**: Resend for email verification
 - **Styling**: Tailwind CSS with shadcn/ui components
 - **Package Manager**: PNPM
@@ -111,6 +112,58 @@ After seeding, you can create customer accounts using Gmail addresses. Admin acc
 
 ## 🗂️ Project Structure
 
+```
+├── src/
+│   ├── app/                 # Next.js App Router
+│   │   ├── (routes)/      # Application routes
+│   │   ├── admin/         # Admin dashboard
+│   │   ├── api/
+│   │   │   └── trpc/      # tRPC API endpoint
+│   │   ├── dashboard/     # User dashboard
+│   │   └── login/        # Auth pages
+│   ├── components/        # UI components (shadcn)
+│   ├── lib/              # Utilities
+│   │   ├── auth.ts       # Better Auth config
+│   │   ├── auth-client.ts# Auth client
+│   │   ├── trpc.tsx     # tRPC client provider
+│   │   ├── db-types.ts  # Database types
+│   │   ├── env.ts       # Environment validation
+│   │   └── prisma.ts    # Prisma client
+│   └── server/           # tRPC server
+│       ├── trpc.ts       # tRPC context & procedures
+│       └── routers/      # API routers
+├── prisma/
+│   ├── schema.prisma     # Database schema
+│   ├── seed.ts          # Seed data
+│   └── config.ts        # Prisma config
+└── docker-compose.yml    # PostgreSQL setup
+```
+
+## 🔌 tRPC API
+
+This project uses tRPC for type-safe APIs. Frontend and backend share types - if you change a router input/output, TypeScript will show errors immediately.
+
+### Available tRPC Procedures
+
+- **Public**: `products.getAll`, `products.getCategories`, `categories.getAll`
+- **Protected** (requires login): `cart.get`, `cart.add`, `cart.update`, `cart.remove`, `orders.get`, `orders.create`, `coupons.validate`, `profile.get`, `profile.update`
+- **Admin**: `products.adminGetAll`, `products.adminCreate`, `products.adminUpdate`, `categories.adminCreate`, `coupons.adminGetAll`, `coupons.adminCreate`, `coupons.adminUpdate`, `coupons.adminDelete`, `admin.getOrders`, `admin.updateOrderStatus`, `admin.getUsers`, `admin.getDashboardData`, `admin.getSystemStatus`, `admin.makeAdmin`
+
+### Using tRPC in Components
+
+```tsx
+import { trpc } from "@/lib/trpc";
+
+// Query
+const { data, isLoading } = trpc.products.getAll.useQuery();
+
+// Mutation
+const mutation = trpc.cart.add.useMutation({
+  onSuccess: () => {
+    utils.cart.get.invalidate();
+  },
+});
+mutation.mutate({ productId, quantity, size: "MEDIUM" });
 ```
 ├── src/
 │   ├── app/                 # Next.js App Router
