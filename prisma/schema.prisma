@@ -37,6 +37,7 @@ model User {
   id            String    @id
   name          String?
   email         String    @unique
+  originalEmail String?
   emailVerified Boolean   @default(false)
   image         String?
   role          String    @default("CUSTOMER")
@@ -45,6 +46,8 @@ model User {
   address       String?
   city          String?
   postalCode    String?
+  deletedAt     DateTime?
+  deletionRequestedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -56,6 +59,7 @@ model User {
   @@index([email])
   @@index([role])
   @@index([createdAt])
+  @@index([deletedAt])
   @@map("users")
 }
 

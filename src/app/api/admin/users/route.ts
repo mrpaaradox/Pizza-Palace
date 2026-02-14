@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     const users = await prisma.user.findMany({
+      where: { deletedAt: null },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
         city: true,
         postalCode: true,
         createdAt: true,
+        deletionRequestedAt: true,
       },
     });
 
@@ -169,8 +171,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 });
     }
 
-    await prisma.user.delete({
+    await prisma.user.update({
       where: { id },
+      data: { 
+        deletedAt: new Date(),
+        deletionRequestedAt: null,
+      },
     });
 
     return NextResponse.json({ success: true });

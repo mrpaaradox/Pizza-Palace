@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, MapPin, Phone, Building, Home, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { User, MapPin, Phone, Building, Home, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -35,6 +43,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const utils = trpc.useUtils();
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0].key);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [formData, setFormData] = useState({
     phone: "",
     address: "",
@@ -62,6 +71,25 @@ export default function ProfilePage() {
     },
   });
 
+  const requestDeletionMutation = trpc.profile.requestDeletion.useMutation({
+    onSuccess: () => {
+      toast.success("Account deletion requested", {
+        description: "An admin will review your request. You'll be logged out shortly.",
+      });
+      utils.profile.get.invalidate();
+      setShowDeleteDialog(false);
+      setTimeout(async () => {
+        await fetch("/api/auth/signout", { method: "POST" });
+        window.location.href = "/login";
+      }, 2000);
+    },
+    onError: (err) => {
+      toast.error("Failed to request deletion", {
+        description: err.message,
+      });
+    },
+  });
+
   const currentCountry = COUNTRIES.find(c => c.key === selectedCountry) || COUNTRIES[0];
 
   useEffect(() => {
@@ -71,32 +99,19 @@ export default function ProfilePage() {
   }, [error, router]);
 
   useEffect(() => {
-    if (profileData?.phone) {
-      const country = COUNTRIES.find(c => profileData.phone?.startsWith(c.code));
-      if (country) {
-        setSelectedCountry(country.key);
-        setFormData({
-          phone: profileData.phone.replace(country.code, ""),
-          address: profileData.address || "",
-          city: profileData.city || "",
-          postalCode: profileData.postalCode || "",
-        });
-      } else {
-        setFormData({
-          phone: profileData.phone || "",
-          address: profileData.address || "",
-          city: profileData.city || "",
-          postalCode: profileData.postalCode || "",
-        });
-      }
-    } else if (profileData) {
-      setFormData({
-        phone: profileData.phone || "",
-        address: profileData.address || "",
-        city: profileData.city || "",
-        postalCode: profileData.postalCode || "",
-      });
+    if (!profileData) return;
+    
+    const country = COUNTRIES.find(c => profileData.phone?.startsWith(c.code));
+    if (country) {
+      setSelectedCountry(country.key);
     }
+    
+    setFormData({
+      phone: profileData.phone?.replace(country?.code || "", "") || "",
+      address: profileData.address || "",
+      city: profileData.city || "",
+      postalCode: profileData.postalCode || "",
+    });
   }, [profileData]);
 
   const handlePhoneChange = (value: string) => {
@@ -275,7 +290,79 @@ export default function ProfilePage() {
             </form>
           </CardContent>
         </Card>
+
+        <Card className="border-red-200 lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Delete Account
+            </CardTitle>
+            <CardDescription>
+              Request to permanently delete your account and all associated data.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {profileData?.deletionRequestedAt ? (
+              <Alert className="bg-amber-50 border-amber-200">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  Your account deletion request is pending review. You'll be notified once an admin processes it.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="space-y-4">
+                <Alert className="bg-red-50 border-red-200">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    This action cannot be undone. All your data will be permanently removed after admin approval.
+                  </AlertDescription>
+                </Alert>
+                <Button
+                  variant="outline"
+                  className="w-full border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  Request Account Deletion
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              Delete Account?
+            </DialogTitle>
+            <DialogDescription>
+              This will submit a request to permanently delete your account. 
+              An admin will review and approve the deletion, after which all your data will be removed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => requestDeletionMutation.mutate()}
+              disabled={requestDeletionMutation.isPending}
+            >
+              {requestDeletionMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Yes, Delete My Account"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
