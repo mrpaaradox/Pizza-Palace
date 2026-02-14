@@ -13,20 +13,65 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const orders = await prisma.order.findMany({
-      where: { userId: session.user.id },
-      include: {
-        items: {
-          include: {
-            product: true,
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const skip = (page - 1) * limit;
+
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where: { userId: session.user.id },
+        select: {
+          id: true,
+          status: true,
+          total: true,
+          createdAt: true,
+          address: true,
+          phone: true,
+          estimatedDelivery: true,
+          items: {
+            select: {
+              id: true,
+              quantity: true,
+              price: true,
+              size: true,
+              product: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+          coupon: {
+            select: {
+              code: true,
+              discountType: true,
+              discountValue: true,
+            },
           },
         },
-        coupon: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip,
+      }),
+      prisma.order.count({
+        where: { userId: session.user.id },
+      }),
+    ]);
 
-    return NextResponse.json(orders);
+    return NextResponse.json({
+      orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    }, {
+      headers: {
+        "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30",
+      },
+    });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch orders" },
@@ -81,7 +126,7 @@ export async function POST(request: NextRequest) {
     }
 
     let subtotal = cartItems.reduce(
-      (sum: number, item: any) => sum + Number(item.product.price) * item.quantity,
+      (sum, item) => sum + Number(item.product.price) * item.quantity,
       0
     );
     let discount = 0;
@@ -115,7 +160,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const order = await prisma.$transaction(async (tx: any) => {
+    const order = await prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
           userId: session.user.id,
@@ -137,7 +182,7 @@ export async function POST(request: NextRequest) {
       });
 
       await tx.orderItem.createMany({
-        data: cartItems.map((item: any) => ({
+        data: cartItems.map((item) => ({
           orderId: newOrder.id,
           productId: item.productId,
           quantity: item.quantity,
@@ -168,7 +213,7 @@ export async function POST(request: NextRequest) {
         const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
         
         const checkout = await createPolarCheckout({
-          items: cartItems.map((item: any) => ({
+          items: cartItems.map((item) => ({
             name: item.product.name,
             quantity: item.quantity,
             price: Number(item.product.price),

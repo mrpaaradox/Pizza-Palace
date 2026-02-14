@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 
 interface CartItem {
   id: string;
@@ -39,7 +39,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .catch(console.error);
   }, []);
 
-  const addItem = (newItem: CartItem) => {
+  const addItem = useCallback((newItem: CartItem) => {
     setItems((prev) => {
       const existingIndex = prev.findIndex(
         (i) => i.product.id === newItem.product.id && i.size === newItem.size
@@ -54,24 +54,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, newItem];
     });
-  };
+  }, []);
 
-  const removeItem = (itemId: string) => {
+  const removeItem = useCallback((itemId: string) => {
     setItems((prev) => prev.filter((i) => i.id !== itemId));
-  };
+  }, []);
 
-  const updateItemQuantity = (itemId: string, quantity: number) => {
+  const updateItemQuantity = useCallback((itemId: string, quantity: number) => {
     setItems((prev) =>
       prev.map((i) => (i.id === itemId ? { ...i, quantity } : i))
     );
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setItems([]);
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      items,
+      setItems,
+      addItem,
+      removeItem,
+      updateItemQuantity,
+      clearCart,
+    }),
+    [items, addItem, removeItem, updateItemQuantity, clearCart]
+  );
 
   return (
-    <CartContext.Provider value={{ items, setItems, addItem, removeItem, updateItemQuantity, clearCart }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );

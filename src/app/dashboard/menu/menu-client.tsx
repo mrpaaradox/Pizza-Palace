@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Pizza, Clock } from "lucide-react";
@@ -70,9 +71,7 @@ export default function MenuClient({ categories }: MenuClientProps) {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {category.products.map((product) => (
-                <div key={product.id} id={`product-${product.id}`} className="h-full">
-                  <ProductCard product={product} />
-                </div>
+                <MemoizedProductCard key={product.id} id={`product-${product.id}`} product={product} />
               ))}
             </div>
           </div>
@@ -82,15 +81,17 @@ export default function MenuClient({ categories }: MenuClientProps) {
   );
 }
 
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({ product, id }: { product: Product; id?: string }) {
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col rounded-xl border-0 shadow-md py-0 gap-0">
+    <Card id={id} className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col rounded-xl border-0 shadow-md py-0 gap-0">
       <div className="h-36 bg-gray-200 relative w-full rounded-t-xl overflow-hidden">
         {product.image ? (
-          <img
+          <Image
             src={product.image}
             alt={product.name}
-            className="absolute inset-0 w-full h-full object-cover"
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
@@ -107,9 +108,6 @@ function ProductCard({ product }: { product: Product }) {
       <CardContent className="p-3 flex-1 flex flex-col gap-1">
         <div className="flex justify-between items-start">
           <h3 className="font-semibold text-gray-900 text-sm truncate flex-1">{product.name}</h3>
-          <span className="text-sm font-bold text-red-500 whitespace-nowrap ml-2">
-            ${Number(product.price).toFixed(2)}
-          </span>
         </div>
         
         <p className="text-xs text-gray-600 line-clamp-2">
@@ -123,9 +121,11 @@ function ProductCard({ product }: { product: Product }) {
               {product.prepTime} mins
             </div>
           )}
-          <AddToCartButton productId={product.id} productName={product.name} />
+          <AddToCartButton productId={product.id} productName={product.name} basePrice={Number(product.price)} />
         </div>
       </CardContent>
     </Card>
   );
 }
+
+const MemoizedProductCard = memo(ProductCard);

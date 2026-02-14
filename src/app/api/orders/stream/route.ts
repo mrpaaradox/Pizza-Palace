@@ -3,18 +3,25 @@ import { headers } from "next/headers";
 import { NextRequest } from "next/server";
 import { Redis } from "@upstash/redis";
 
+interface OrderUpdate {
+  orderId: string;
+  status: string;
+  userId?: string;
+  timestamp: number;
+}
+
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || "https://vocal-reindeer-41955.upstash.io";
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || "AaPjAAIncDIzYjYyNmFlYTdlZDk0YTBhOWUzOGRmNjU5OGM0ZGUwOXAyNDE5NTU";
 
 export const dynamic = "force-dynamic";
 
-async function getOrderUpdates(redis: Redis, userId: string): Promise<any[]> {
+async function getOrderUpdates(redis: Redis, userId: string): Promise<OrderUpdate[]> {
   const key = `order-updates:${userId}`;
   const updates = await redis.lrange(key, 0, -1);
   if (updates.length > 0) {
     await redis.del(key);
   }
-  return updates as any[];
+  return updates as unknown as OrderUpdate[];
 }
 
 export async function GET(request: NextRequest) {
@@ -36,7 +43,7 @@ export async function GET(request: NextRequest) {
     start(controller) {
       const encoder = new TextEncoder();
       
-      const sendEvent = (data: any) => {
+      const sendEvent = (data: OrderUpdate | { type: string; message: string }) => {
         const message = `data: ${JSON.stringify(data)}\n\n`;
         try {
           controller.enqueue(encoder.encode(message));

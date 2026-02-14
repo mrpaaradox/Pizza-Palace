@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Pizza, Flame } from "lucide-react";
@@ -48,10 +49,13 @@ export default function ProductCarousel({ products }: ProductCarouselProps) {
             <Link href={`/dashboard/menu?product=${product.id}`}>
               <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden group">
                 {product.image ? (
-                  <img
+                  <Image
                     src={product.image}
                     alt={product.name}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    sizes="100vw"
+                    priority={index === 0}
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-red-50">

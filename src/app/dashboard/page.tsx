@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
@@ -57,10 +58,12 @@ export default async function DashboardPage() {
                 <Card className="overflow-hidden hover:shadow-lg transition-all cursor-pointer group rounded-xl border-0 shadow-md py-0">
                   <div className="h-32 bg-gray-200 relative rounded-t-xl overflow-hidden">
                     {product.image ? (
-                      <img
+                      <Image
                         src={product.image}
                         alt={product.name}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center bg-gray-200">

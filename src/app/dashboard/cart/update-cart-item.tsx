@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Loader2 } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/lib/cart-context";
 
@@ -13,16 +12,16 @@ interface UpdateCartItemProps {
 }
 
 export default function UpdateCartItem({ itemId, currentQuantity }: UpdateCartItemProps) {
-  const router = useRouter();
   const { updateItemQuantity } = useCart();
   const [quantity, setQuantity] = useState(currentQuantity);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const updateQuantity = async (newQuantity: number) => {
-    if (newQuantity < 1) return;
-    
-    setIsLoading(true);
-    
+  const updateQuantity = useCallback(async (newQuantity: number) => {
+    if (newQuantity < 1 || newQuantity === quantity) return;
+
+    const previousQuantity = quantity;
+    setQuantity(newQuantity);
+    updateItemQuantity(itemId, newQuantity);
+
     try {
       const response = await fetch("/api/cart", {
         method: "PUT",
@@ -36,38 +35,37 @@ export default function UpdateCartItem({ itemId, currentQuantity }: UpdateCartIt
       });
 
       if (!response.ok) {
+        setQuantity(previousQuantity);
+        updateItemQuantity(itemId, previousQuantity);
         throw new Error("Failed to update cart");
       }
-
-      setQuantity(newQuantity);
-      updateItemQuantity(itemId, newQuantity);
     } catch (error) {
+      setQuantity(previousQuantity);
+      updateItemQuantity(itemId, previousQuantity);
       toast.error("Failed to update cart");
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [itemId, quantity, updateItemQuantity]);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
-        className="h-8 w-8"
+        className="h-7 w-7 hover:bg-gray-200 transition-colors"
         onClick={() => updateQuantity(quantity - 1)}
-        disabled={isLoading || quantity <= 1}
+        disabled={quantity <= 1}
       >
-        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Minus className="h-4 w-4" />}
+        <Minus className="h-3.5 w-3.5" />
       </Button>
-      <span className="w-8 text-center font-medium">{quantity}</span>
+      <span className="w-7 text-center text-sm font-semibold">{quantity}</span>
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
-        className="h-8 w-8"
+        className="h-7 w-7 hover:bg-gray-200 transition-colors"
         onClick={() => updateQuantity(quantity + 1)}
-        disabled={isLoading}
+        disabled={quantity >= 10}
       >
-        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        <Plus className="h-3.5 w-3.5" />
       </Button>
     </div>
   );

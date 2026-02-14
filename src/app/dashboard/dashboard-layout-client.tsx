@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { Pizza, Home, ShoppingCart, Package, User } from "lucide-react";
 import SignOutButton from "@/components/sign-out-button";
@@ -7,7 +8,7 @@ import { CartProvider, useCart } from "@/lib/cart-context";
 
 function CartNavLink() {
   const { items } = useCart();
-  const count = items.reduce((sum, item) => sum + item.quantity, 0);
+  const count = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
   
   return (
     <Link
@@ -17,7 +18,7 @@ function CartNavLink() {
       <ShoppingCart className="w-5 h-5" />
       <span className="text-xs">Cart</span>
       {count > 0 && (
-        <span className="absolute top-0 right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+        <span className="absolute top-0 right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-semibold animate-in zoom-in duration-200">
           {count}
         </span>
       )}

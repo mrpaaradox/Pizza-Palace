@@ -15,7 +15,12 @@ export function getRedisPublisher() {
   return publisher;
 }
 
-export async function publishOrderUpdate(orderId: string, update: any) {
+interface OrderUpdatePayload {
+  status: string;
+  userId?: string;
+}
+
+export async function publishOrderUpdate(orderId: string, update: OrderUpdatePayload) {
   const publisher = getRedisPublisher();
   const message = JSON.stringify({ orderId, ...update, timestamp: Date.now() });
   console.log("[Redis] Publishing:", message);
