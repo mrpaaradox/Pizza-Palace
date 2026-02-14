@@ -38,51 +38,42 @@ A full-stack pizza delivery application built with Next.js, Better Auth, Prisma,
 
 ## 🛠️ Setup Instructions
 
-### 1. Clone and Install
+### Quick Start (Recommended)
+
+```bash
+# Clone the repo
+git clone https://github.com/your-repo/pizza-palace.git
+cd pizza-palace
+
+# Run the automated setup - does everything for you!
+pnpm dx
+```
+
+That's it! The `pnpm dx` command will:
+1. Install all dependencies
+2. Start PostgreSQL via Docker
+3. Generate a secure `.env` file with auto-generated secrets
+4. Set up the database (migrations)
+5. Seed the database with sample data
+6. Start the development server
+
+Open http://localhost:3000 and start playing with the app!
+
+### Manual Setup
+
+If you prefer to set up manually or already have Docker running:
 
 ```bash
 # Install dependencies
 pnpm install
-```
 
-### 2. Environment Variables
-
-Create a `.env` file in the root directory:
-
-```env
-# Database
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/pizza_palace?schema=public"
-
-# Better Auth (generate a secure secret)
-BETTER_AUTH_SECRET="your-super-secret-key-change-in-production-min-32-characters-long"
-BETTER_AUTH_URL="http://localhost:3000"
-
-# Resend Email
-RESEND_API_KEY="re_PtgyxhYG_J5g9SKtiKjhgvFEoWTi1agCX"
-EMAIL_FROM="noreply@pizzapalace.com"
-```
-
-### 3. Start PostgreSQL
-
-```bash
 # Start the database
 docker-compose up -d
+
+# Create .env file (see Environment Variables below)
 ```
 
-### 4. Database Setup
-
-```bash
-# Generate Prisma client
-pnpm db:generate
-
-# Run migrations
-pnpm db:migrate
-
-# Seed the database with pizza data
-pnpm db:seed
-```
-
-### 5. Run the Development Server
+Then follow the steps below for environment variables and database setup.
 
 ```bash
 pnpm dev
