@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, Clock, MapPin, Phone, Loader2, ChevronLeft, ChevronRight, RefreshCcw } from "lucide-react";
+import { Package, Clock, MapPin, Phone, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useOrderUpdates } from "@/lib/use-order-updates";
 
 const statusColors: Record<string, string> = {
@@ -29,16 +29,11 @@ const statusLabels: Record<string, string> = {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const { lastUpdate, isConnected } = useOrderUpdates();
 
-  const fetchOrders = async (page = 1, refresh = false) => {
-    if (refresh) {
-      setIsRefreshing(true);
-    } else {
-      setIsLoading(true);
-    }
+  const fetchOrders = async (page = 1) => {
+    setIsLoading(true);
     try {
       const response = await fetch(`/api/orders?page=${page}&limit=10`);
       if (response.ok) {
@@ -50,12 +45,7 @@ export default function OrdersPage() {
       console.error("Failed to fetch orders:", error);
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
     }
-  };
-
-  const handleRefresh = () => {
-    fetchOrders(pagination.page, true);
   };
 
   useEffect(() => {
@@ -125,20 +115,9 @@ export default function OrdersPage() {
           <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
           <p className="text-gray-600 mt-1">Track and manage your orders</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            title="Refresh orders"
-          >
-            <RefreshCcw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-          </Button>
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-gray-300"}`} />
-            <span className="text-xs text-gray-500">{isConnected ? "Live" : "Connecting..."}</span>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-gray-300"}`} />
+          <span className="text-xs text-gray-500">{isConnected ? "Live" : "Connecting..."}</span>
         </div>
       </div>
 

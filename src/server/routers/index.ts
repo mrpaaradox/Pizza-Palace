@@ -708,7 +708,12 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const { orderId, status } = input;
 
-        return ctx.prisma.order.update({
+        const existingOrder = await ctx.prisma.order.findUnique({
+          where: { id: orderId },
+          select: { userId: true },
+        });
+
+        const updatedOrder = await ctx.prisma.order.update({
           where: { id: orderId },
           data: { status },
           include: {
@@ -716,6 +721,20 @@ export const appRouter = router({
             items: { include: { product: { select: { name: true } } } },
           },
         });
+
+        const { pusherServer, PUSHER_CHANNEL, PUSHER_EVENT } = await import("@/lib/pusher");
+        try {
+          await pusherServer.trigger(PUSHER_CHANNEL, PUSHER_EVENT, {
+            orderId,
+            status,
+            userId: existingOrder?.userId,
+            timestamp: Date.now(),
+          });
+        } catch (error) {
+          console.error("[Pusher] Trigger failed from tRPC:", error);
+        }
+
+        return updatedOrder;
       }),
 
     getUsers: adminProcedure.query(async ({ ctx }) => {
