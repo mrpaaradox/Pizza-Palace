@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Redis } from "@upstash/redis";
-
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || "https://vocal-reindeer-41955.upstash.io";
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || "AaPjAAIncDIzYjYyNmFlYTdlZDk0YTBhOWUzOGRmNjU5OGM0ZGUwOXAyNDE5NTU";
+import { pusherServer, PUSHER_CHANNEL, PUSHER_EVENT } from "@/lib/pusher";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string }> },
 ) {
-  console.log("[Admin] PATCH /api/admin/orders called");
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -54,22 +50,18 @@ export async function PATCH(
       data: { status },
     });
 
-    try {
-      const redis = new Redis({
-        url: REDIS_URL,
-        token: REDIS_TOKEN,
-      });
-      const update = JSON.stringify({
+    const update = {
         orderId,
         status: updatedOrder.status,
         userId: existingOrder?.userId,
         timestamp: Date.now(),
-      });
-      await redis.lpush(`order-updates:${existingOrder?.userId}`, update);
-      await redis.lpush(`order-updates:all`, update);
-    } catch (redisError) {
-      console.error("Redis error (non-fatal):", redisError);
-    }
+      };
+
+      try {
+        await pusherServer.trigger(PUSHER_CHANNEL, PUSHER_EVENT, update);
+      } catch (pusherError) {
+        console.error("[Pusher] ❌ Trigger failed:", pusherError);
+      }
 
     return NextResponse.json(updatedOrder);
   } catch (error) {

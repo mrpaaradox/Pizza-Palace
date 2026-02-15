@@ -182,7 +182,7 @@ export default function AdminOrdersPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <CardTitle className="text-base">Order #{order.id.slice(-8)}</CardTitle>
+                      <CardTitle className="text-base">Order #{order.id.slice(-8).toUpperCase()}</CardTitle>
                       <Badge className={statusColors[order.status]}>
                         {statusLabels[order.status]}
                       </Badge>
