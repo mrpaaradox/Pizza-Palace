@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import Pusher from "pusher-js";
+import { NEXT_PUBLIC_PUSHER_KEY, NEXT_PUBLIC_PUSHER_CLUSTER, PUSHER_CHANNEL, PUSHER_EVENT } from "./pusher";
 
 interface OrderUpdate {
   orderId: string;
@@ -11,11 +12,6 @@ interface OrderUpdate {
   timestamp: number;
 }
 
-const PUSHER_KEY = "0cdae9a9c3203d68398f";
-const PUSHER_CLUSTER = "ap2";
-const PUSHER_CHANNEL = "order-updates";
-const PUSHER_EVENT = "status-update";
-
 export function useOrderUpdates() {
   const [lastUpdate, setLastUpdate] = useState<OrderUpdate | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -23,8 +19,8 @@ export function useOrderUpdates() {
 
   useEffect(() => {
     if (!pusherRef.current) {
-      pusherRef.current = new Pusher(PUSHER_KEY, {
-        cluster: PUSHER_CLUSTER,
+      pusherRef.current = new Pusher(NEXT_PUBLIC_PUSHER_KEY, {
+        cluster: NEXT_PUBLIC_PUSHER_CLUSTER,
       });
     }
 
