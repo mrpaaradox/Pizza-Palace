@@ -12,7 +12,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
   EMAIL_FROM: z.string().email("EMAIL_FROM must be a valid email"),
   
-// Polar.sh Payments
+  // Polar.sh Payments
   POLAR_ACCESS_TOKEN: z.string().min(1, "POLAR_ACCESS_TOKEN is required"),
   POLAR_ORGANIZATION_ID: z.string().min(1, "POLAR_ORGANIZATION_ID is required"),
   POLAR_WEBHOOK_SECRET: z.string().optional(),
