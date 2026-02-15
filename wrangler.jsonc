@@ -1,7 +1,4 @@
 {
   "name": "pizza-palace",
-  "compatibility_date": "2026-02-15",
-  "assets": {
-    "directory": ".next"
-  }
+  "compatibility_date": "2026-02-15"
 }
