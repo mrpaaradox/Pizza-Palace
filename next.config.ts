@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
-import { createCloudflareAdapter } from "@cloudflare/next-on-pages";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   images: {
     remotePatterns: [
       {
@@ -13,4 +13,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default createCloudflareAdapter(nextConfig);
+export default nextConfig;
