@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "prisma generate && next build",
-    "build:cloudflare": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",
