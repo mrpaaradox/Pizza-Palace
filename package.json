@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "prisma generate && next build",
-    "build:cloudflare": "prisma generate && next build && npx @opennextjs/cloudflare",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",
@@ -53,7 +52,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.16.5",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.16.0",

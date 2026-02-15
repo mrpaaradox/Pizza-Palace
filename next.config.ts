@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { createCloudflareAdapter } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
   images: {
@@ -12,5 +11,3 @@ const nextConfig: NextConfig = {
     ],
   },
 };
-
-export default createCloudflareAdapter(nextConfig);
