@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Pizza, Loader2, Mail, Lock } from "lucide-react";
+import { Loader2, Mail, Lock } from "lucide-react";
 import { signIn } from "@/lib/auth-client";
 import { toast } from "sonner";
 
@@ -43,7 +42,7 @@ export default function LoginForm() {
         return;
       }
 
-      toast.success("Login successful!");
+      toast.success("Welcome back!");
       router.push("/dashboard");
       router.refresh();
     } catch (err: any) {
@@ -57,87 +56,101 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white px-4">
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
-            <Pizza className="w-7 h-7 text-white" />
-          </div>
-          <span className="text-3xl font-bold text-gray-900">Pizza Palace</span>
+    <div className="min-h-screen flex">
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1200&q=80')] bg-cover bg-center opacity-40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-[#1a1a1a]/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#1a1a1a]/80 to-transparent" />
+        
+        <div className="relative z-10 flex flex-col justify-end p-16">
+          <h2 className="text-5xl font-light text-white mb-4 leading-tight">
+            Welcome to<br />
+            <span className="font-serif italic text-[#D4AF37]">Pizza Palace</span>
+          </h2>
+          <p className="text-white/60 text-lg max-w-md">
+            Experience the finest pizzas crafted with passion and the finest ingredients.
+          </p>
         </div>
+      </div>
 
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
-            <CardDescription className="text-center">
-              Enter your credentials to access your account
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-[#0f0f0f]">
+        <div className="w-full max-w-md">
+          <div className="lg:hidden mb-12 text-center">
+            <h1 className="text-3xl font-serif italic text-[#D4AF37] mb-2">Pizza Palace</h1>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor={emailId}>Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id={emailId}
-                    type="email"
-                    placeholder="name@example.com"
-                    className="pl-10"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
+          <div className="mb-10">
+            <h3 className="text-2xl font-light text-white mb-2">Sign in</h3>
+            <p className="text-white/40">Enter your credentials to continue</p>
+          </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor={passwordId}>Password</Label>
-                  <Link href="/forgot-password" className="text-sm text-red-500 hover:text-red-600">
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id={passwordId}
-                    type="password"
-                    placeholder="••••••••"
-                    className="pl-10"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="pt-5 flex flex-col space-y-4">
-              <Button type="submit" className="w-full bg-red-500 hover:bg-red-600" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  "Sign In"
-                )}
-              </Button>
-              <p className="text-sm text-center text-gray-600">
-                Don&apos;t have an account?{" "}
-                <Link href="/register" className="text-red-500 hover:text-red-600 font-medium">
-                  Sign up
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <Alert className="border-red-800 bg-red-950/30">
+                <AlertDescription className="text-red-400">{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor={emailId} className="text-white/70 text-sm">
+                Email
+              </Label>
+              <Input
+                id={emailId}
+                type="email"
+                placeholder="your@email.com"
+                className="h-14 bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37] focus:ring-[#D4AF37]/20 text-lg"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor={passwordId} className="text-white/70 text-sm">
+                  Password
+                </Label>
+                <Link href="/forgot-password" className="text-xs text-[#D4AF37]/70 hover:text-[#D4AF37] transition-colors">
+                  Forgot password?
                 </Link>
-              </p>
-            </CardFooter>
+              </div>
+              <Input
+                id={passwordId}
+                type="password"
+                placeholder="••••••••"
+                className="h-14 bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37] focus:ring-[#D4AF37]/20 text-lg"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-14 bg-[#D4AF37] hover:bg-[#c9a227] text-black font-medium text-lg tracking-wide transition-colors"
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Signing in...
+                </span>
+              ) : (
+                "Sign In"
+              )}
+            </Button>
           </form>
-        </Card>
+
+          <div className="mt-10 pt-8 border-t border-[#2a2a2a]">
+            <p className="text-center text-white/40">
+              Don&apos;t have an account?{" "}
+              <Link href="/register" className="text-[#D4AF37] hover:underline">
+                Create one
+              </Link>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

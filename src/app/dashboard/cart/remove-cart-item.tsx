@@ -30,7 +30,7 @@ export default function RemoveCartItem({ itemId }: RemoveCartItemProps) {
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8 text-gray-400 hover:text-red-500"
+      className="h-8 w-8 text-white/40 hover:text-red-400 hover:bg-red-400/10 transition-colors"
       onClick={handleRemove}
       disabled={isLoading}
     >

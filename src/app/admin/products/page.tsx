@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useId } from "react";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { motion } from "motion/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,15 +10,34 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Plus, Pizza, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
+function AnimatedSection({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export default function AdminProductsPage() {
-  const router = useRouter();
   const utils = trpc.useUtils();
-  const [showForm, setShowForm] = useState(false);
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showProductDialog, setShowProductDialog] = useState(false);
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [categoryData, setCategoryData] = useState({ name: "", description: "" });
   const [formData, setFormData] = useState({
@@ -38,7 +58,7 @@ export default function AdminProductsPage() {
     onSuccess: () => {
       toast.success("Product created successfully!");
       utils.products.adminGetAll.invalidate();
-      handleCancel();
+      handleCloseProductDialog();
     },
     onError: (error) => {
       toast.error("Failed to create product", { description: error.message });
@@ -49,7 +69,7 @@ export default function AdminProductsPage() {
     onSuccess: () => {
       toast.success("Product updated successfully!");
       utils.products.adminGetAll.invalidate();
-      handleCancel();
+      handleCloseProductDialog();
     },
     onError: (error) => {
       toast.error("Failed to update product", { description: error.message });
@@ -61,7 +81,7 @@ export default function AdminProductsPage() {
       toast.success("Category created successfully!");
       utils.categories.getAll.invalidate();
       setCategoryData({ name: "", description: "" });
-      setShowCategoryForm(false);
+      setShowCategoryDialog(false);
     },
     onError: (error) => {
       toast.error("Failed to create category", { description: error.message });
@@ -83,11 +103,11 @@ export default function AdminProductsPage() {
       isFeatured: product.isFeatured,
       prepTime: product.prepTime ? String(product.prepTime) : "",
     });
-    setShowForm(true);
+    setShowProductDialog(true);
   };
 
-  const handleCancel = () => {
-    setShowForm(false);
+  const handleCloseProductDialog = () => {
+    setShowProductDialog(false);
     setEditingProduct(null);
     setFormData({
       name: "",
@@ -101,7 +121,7 @@ export default function AdminProductsPage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmitProduct = (e: React.FormEvent) => {
     e.preventDefault();
     
     const data = {
@@ -130,293 +150,299 @@ export default function AdminProductsPage() {
     });
   };
 
-  const nameId = useId();
-  const priceId = useId();
-  const descId = useId();
-  const categoryIdSelect = useId();
-  const prepTimeId = useId();
-  const imageId = useId();
-  const isAvailableId = useId();
-  const isFeaturedId = useId();
   const categoryNameId = useId();
   const categoryDescId = useId();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Products</h1>
-          <p className="text-gray-600 mt-1">Manage your pizza menu</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowCategoryForm(true)}
-            className="border-red-500 text-red-500 hover:bg-red-50"
-          >
-            <span className="sm:hidden">Category</span>
-            <span className="hidden sm:inline">Add Category</span>
-          </Button>
-          {!showForm && (
+      <AnimatedSection>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-light text-white">Products</h1>
+            <p className="text-white/50 mt-1">Manage your pizza menu</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Button
-              onClick={() => setShowForm(true)}
-              className="bg-red-500 hover:bg-red-600"
+              variant="outline"
+              onClick={() => setShowCategoryDialog(true)}
+              className="border-[#2a2a2a] text-white/60 hover:bg-[#1a1a1a] hover:border-[#D4AF37]/30 hover:text-white"
+            >
+              <span className="sm:hidden">Category</span>
+              <span className="hidden sm:inline">Add Category</span>
+            </Button>
+            <Button
+              onClick={() => setShowProductDialog(true)}
+              className="bg-[#D4AF37] hover:bg-[#c9a227] text-black font-medium"
             >
               <Plus className="w-4 h-4 mr-2" />
               <span className="sm:hidden">Add</span>
               <span className="hidden sm:inline">Add Product</span>
             </Button>
-          )}
+          </div>
         </div>
-      </div>
+      </AnimatedSection>
 
-      {showCategoryForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add New Category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCategorySubmit} className="space-y-4">
+      {/* Add Category Dialog */}
+      <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
+        <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+          <DialogHeader>
+            <DialogTitle className="text-white font-light">Add New Category</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCategorySubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor={categoryNameId} className="text-white/70">Category Name *</Label>
+              <Input
+                id={categoryNameId}
+                placeholder="e.g., Pizzas, Drinks, Desserts"
+                value={categoryData.name}
+                onChange={(e) => setCategoryData({ ...categoryData, name: e.target.value })}
+                className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37]"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={categoryDescId} className="text-white/70">Description</Label>
+              <Textarea
+                id={categoryDescId}
+                placeholder="Category description..."
+                value={categoryData.description}
+                onChange={(e) => setCategoryData({ ...categoryData, description: e.target.value })}
+                className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37]"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowCategoryDialog(false)} className="border-[#2a2a2a] text-white/60 hover:bg-[#1a1a1a] hover:border-[#D4AF37]/30 hover:text-white">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createCategoryMutation.isPending} className="bg-[#D4AF37] hover:bg-[#c9a227] text-black font-medium">
+                {createCategoryMutation.isPending ? "Creating..." : "Create Category"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Product Dialog */}
+      <Dialog open={showProductDialog} onOpenChange={(open: boolean) => !open && handleCloseProductDialog()}>
+        <DialogContent className="bg-[#1a1a1a] border-[#2a2a2a] max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white font-light">{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitProduct} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor={categoryNameId}>Category Name *</Label>
+                <Label className="text-white/70">Product Name *</Label>
                 <Input
-                  id={categoryNameId}
-                  placeholder="e.g., Pizzas, Drinks, Desserts"
-                  value={categoryData.name}
-                  onChange={(e) => setCategoryData({ ...categoryData, name: e.target.value })}
+                  placeholder="e.g., Margherita Pizza"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37]"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor={categoryDescId}>Description</Label>
-                <Textarea
-                  id={categoryDescId}
-                  placeholder="Category description..."
-                  value={categoryData.description}
-                  onChange={(e) => setCategoryData({ ...categoryData, description: e.target.value })}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button type="submit" disabled={createCategoryMutation.isPending} className="bg-red-500 hover:bg-red-600">
-                  {createCategoryMutation.isPending ? "Creating..." : "Create Category"}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setShowCategoryForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingProduct ? "Edit Product" : "Add New Product"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor={nameId}>Product Name *</Label>
-                  <Input
-                    id={nameId}
-                    placeholder="e.g., Margherita Pizza"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={priceId}>Price ($) *</Label>
-                  <Input
-                    id={priceId}
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="12.99"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor={descId}>Description *</Label>
-                <Textarea
-                  id={descId}
-                  placeholder="Describe your product..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                <Label className="text-white/70">Price ($) *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="12.99"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37]"
                   required
                 />
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor={categoryIdSelect}>Category *</Label>
-                  <Select
-                    value={formData.categoryId}
-                    onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
-                    required
-                  >
-                    <SelectTrigger id={categoryIdSelect}>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={prepTimeId}>Prep Time (minutes)</Label>
-                  <Input
-                    id={prepTimeId}
-                    type="number"
-                    min="1"
-                    placeholder="15"
-                    value={formData.prepTime}
-                    onChange={(e) => setFormData({ ...formData, prepTime: e.target.value })}
-                  />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label className="text-white/70">Description *</Label>
+              <Textarea
+                placeholder="Describe your product..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37]"
+                required
+              />
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor={imageId}>Image URL</Label>
-                <Input
-                  id={imageId}
-                  placeholder="https://example.com/image.jpg"
-                  value={formData.image}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                />
-              </div>
-
-              <div className="flex items-center gap-6">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id={isAvailableId}
-                    checked={formData.isAvailable}
-                    onCheckedChange={(checked: boolean) => setFormData({ ...formData, isAvailable: checked })}
-                  />
-                  <Label htmlFor={isAvailableId} className="text-sm font-normal">
-                    Available for order
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id={isFeaturedId}
-                    checked={formData.isFeatured}
-                    onCheckedChange={(checked: boolean) => setFormData({ ...formData, isFeatured: checked })}
-                  />
-                  <Label htmlFor={isFeaturedId} className="text-sm font-normal">
-                    Featured product
-                  </Label>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  type="submit" 
-                  disabled={createProductMutation.isPending || updateProductMutation.isPending} 
-                  className="bg-red-500 hover:bg-red-600"
+                <Label className="text-white/70">Category *</Label>
+                <Select
+                  value={formData.categoryId}
+                  onValueChange={(value: string) => setFormData({ ...formData, categoryId: value })}
+                  required
                 >
-                  {(createProductMutation.isPending || updateProductMutation.isPending) ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    editingProduct ? "Update Product" : "Create Product"
-                  )}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleCancel}>
-                  Cancel
-                </Button>
+                  <SelectTrigger className="bg-[#1a1a1a] border-[#2a2a2a] text-white">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id} className="text-white">
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+              <div className="space-y-2">
+                <Label className="text-white/70">Prep Time (minutes)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="15"
+                  value={formData.prepTime}
+                  onChange={(e) => setFormData({ ...formData, prepTime: e.target.value })}
+                  className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37]"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-white/70">Image URL</Label>
+              <Input
+                placeholder="https://example.com/image.jpg"
+                value={formData.image}
+                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                className="bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37]"
+              />
+            </div>
+
+            <div className="flex items-center gap-6">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isAvailable"
+                  checked={formData.isAvailable}
+                  onCheckedChange={(checked: boolean) => setFormData({ ...formData, isAvailable: checked })}
+                  className="border-[#2a2a2a] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:border-[#D4AF37]"
+                />
+                <Label htmlFor="isAvailable" className="text-sm font-light text-white/70">
+                  Available for order
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isFeatured"
+                  checked={formData.isFeatured}
+                  onCheckedChange={(checked: boolean) => setFormData({ ...formData, isFeatured: checked })}
+                  className="border-[#2a2a2a] data-[state=checked]:bg-[#D4AF37] data-[state=checked]:border-[#D4AF37]"
+                />
+                <Label htmlFor="isFeatured" className="text-sm font-light text-white/70">
+                  Featured product
+                </Label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleCloseProductDialog} className="border-[#2a2a2a] text-white/60 hover:bg-[#1a1a1a] hover:border-[#D4AF37]/30 hover:text-white">
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createProductMutation.isPending || updateProductMutation.isPending} 
+                className="bg-[#D4AF37] hover:bg-[#c9a227] text-black font-medium"
+              >
+                {(createProductMutation.isPending || updateProductMutation.isPending) ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  editingProduct ? "Update Product" : "Create Product"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {products.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Pizza className="w-12 h-12 text-gray-400" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No products yet</h2>
-            <p className="text-gray-600 mb-6">Start adding products to your menu.</p>
-            <Button onClick={() => setShowForm(true)} className="bg-red-500 hover:bg-red-600">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </Button>
-          </CardContent>
-        </Card>
+        <AnimatedSection>
+          <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <div className="relative mb-6">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 border-2 border-dashed border-[#2a2a2a] rounded-full w-24 h-24"
+                />
+                <div className="relative w-20 h-20 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
+                  <Pizza className="w-10 h-10 text-[#D4AF37]" />
+                </div>
+              </div>
+              <h2 className="text-xl font-light text-white mb-2">No products yet</h2>
+              <p className="text-white/50 mb-6">Start adding products to your menu.</p>
+              <Button onClick={() => setShowProductDialog(true)} className="bg-[#D4AF37] hover:bg-[#c9a227] text-black font-medium">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </Button>
+            </CardContent>
+          </Card>
+        </AnimatedSection>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <button 
-              type="button"
-              key={product.id} 
-              className="hover:shadow-xl transition-all duration-300 group rounded-2xl overflow-hidden bg-white cursor-pointer text-left w-full"
-              onClick={() => handleEdit(product)}
-            >
-              <div className="relative aspect-square bg-gray-100">
-                {product.image ? (
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                    <Pizza className="w-16 h-16 text-gray-300" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
-                {product.isFeatured && (
-                  <span className="absolute top-3 left-3 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full shadow">
-                    FEATURED
-                  </span>
-                )}
-                {!product.isAvailable && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <span className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold">Unavailable</span>
-                  </div>
-                )}
-              </div>
-              <div className="p-4 bg-white">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-gray-900 text-lg leading-tight">{product.name}</h3>
+          {products.map((product, index) => (
+            <AnimatedSection key={product.id} delay={index * 0.05}>
+              <button 
+                type="button"
+                className="hover:shadow-xl hover:shadow-[#D4AF37]/5 transition-all duration-300 group rounded-2xl overflow-hidden bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#D4AF37]/30 cursor-pointer text-left w-full block"
+                onClick={() => handleEdit(product)}
+              >
+                <div className="relative aspect-square bg-[#2a2a2a]">
+                  {product.image ? (
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1a1a1a] to-[#2a2a2a]">
+                      <Pizza className="w-16 h-16 text-[#2a2a2a]" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                  {product.isFeatured && (
+                    <span className="absolute top-3 left-3 bg-[#D4AF37] text-black text-xs font-medium px-2 py-1 rounded-full shadow">
+                      FEATURED
+                    </span>
+                  )}
+                  {!product.isAvailable && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <span className="bg-red-600 text-white px-4 py-2 rounded-full font-light">Unavailable</span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm text-gray-500 line-clamp-2 mb-3 min-h-[2.5rem]">{product.description}</p>
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    {product.category?.name || "Uncategorized"}
-                  </span>
-                  <span className="font-bold text-xl text-gray-900">${Number(product.price).toFixed(2)}</span>
+                <div className="p-4 bg-[#1a1a1a]">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-light text-white text-lg leading-tight">{product.name}</h3>
+                  </div>
+                  <p className="text-sm text-white/40 line-clamp-2 mb-3 min-h-[2.5rem]">{product.description}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-light bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+                      {product.category?.name || "Uncategorized"}
+                    </span>
+                    <span className="font-light text-xl text-[#D4AF37]">${Number(product.price).toFixed(2)}</span>
+                  </div>
+                  {product.prepTime && (
+                    <p className="text-xs text-white/40 mt-2 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full mr-1.5" />
+                      {product.prepTime} min prep time
+                    </p>
+                  )}
                 </div>
-                {product.prepTime && (
-                  <p className="text-xs text-gray-400 mt-2 flex items-center">
-                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1.5" />
-                    {product.prepTime} min prep time
-                  </p>
-                )}
-              </div>
-            </button>
+              </button>
+            </AnimatedSection>
           ))}
         </div>
       )}

@@ -200,11 +200,11 @@ export default function DashboardExportButton({
     }
   };
 
-  return (
+return (
     <Button
       onClick={generatePDF}
       disabled={isExporting}
-      className="bg-red-500 hover:bg-red-600"
+      className="bg-[#D4AF37] hover:bg-[#c9a227] text-black font-medium"
     >
       {isExporting ? (
         <>

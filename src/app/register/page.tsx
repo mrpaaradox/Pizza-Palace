@@ -6,10 +6,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Pizza, Loader2, Mail, Lock, User } from "lucide-react";
-import { signUp, useSession, validateGmailEmail } from "@/lib/auth-client";
+import { Loader2, Mail, Lock, User } from "lucide-react";
+import { signUp, useSession, validateGmailEmail, signIn } from "@/lib/auth-client";
 import { toast } from "sonner";
 
 export default function RegisterPage() {
@@ -36,8 +35,8 @@ export default function RegisterPage() {
 
   if (sessionLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+      <div className="min-h-screen flex items-center justify-center bg-[#0f0f0f]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
       </div>
     );
   }
@@ -47,9 +46,10 @@ export default function RegisterPage() {
     setIsLoading(true);
     setError("");
 
-    // Validate Gmail-only
     if (!validateGmailEmail(formData.email)) {
-      setError("Only Gmail addresses (@gmail.com) are accepted for registration");
+      setError(
+        "Only Gmail addresses (@gmail.com) are accepted for registration",
+      );
       toast.error("Invalid email", {
         description: "Only Gmail addresses are accepted",
       });
@@ -57,7 +57,6 @@ export default function RegisterPage() {
       return;
     }
 
-    // Validate password match
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       toast.error("Validation error", {
@@ -67,7 +66,6 @@ export default function RegisterPage() {
       return;
     }
 
-    // Validate password length
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters long");
       toast.error("Validation error", {
@@ -92,9 +90,20 @@ export default function RegisterPage() {
         });
       } else {
         toast.success("Account created!", {
-          description: "Please check your email to verify your account.",
+          description: "Welcome to Pizza Palace! Taking you to the menu...",
         });
-        router.push("/verify-email?email=" + encodeURIComponent(formData.email));
+        
+        const signInResult = await signIn.email({
+          email: formData.email,
+          password: formData.password,
+        });
+        
+        if (signInResult.error) {
+          router.push("/login");
+        } else {
+          router.push("/dashboard");
+        }
+        router.refresh();
       }
     } catch (err: any) {
       console.error("Registration exception:", err);
@@ -108,133 +117,152 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white px-4 py-8">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
-            <Pizza className="w-7 h-7 text-white" />
-          </div>
-          <span className="text-3xl font-bold text-gray-900">Pizza Palace</span>
+    <div className="min-h-screen flex">
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=1200&q=80')] bg-cover bg-center opacity-40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-[#1a1a1a]/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#1a1a1a]/80 to-transparent" />
+
+        <div className="relative z-10 flex flex-col justify-end p-16">
+          <h2 className="text-5xl font-light text-white mb-4 leading-tight">
+            Join the
+            <br />
+            <span className="font-serif italic text-[#D4AF37]">
+              Pizza Palace
+            </span>
+            <br />
+            Family
+          </h2>
+          <p className="text-white/60 text-lg max-w-md">
+            Create an account to enjoy exclusive deals and faster ordering.
+          </p>
         </div>
+      </div>
 
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Create Account</CardTitle>
-            <CardDescription className="text-center">
-              Sign up to start ordering delicious pizza
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor={nameId}>Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id={nameId}
-                    type="text"
-                    placeholder="John Doe"
-                    className="pl-10"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-[#0f0f0f]">
+        <div className="w-full max-w-md">
+          <div className="lg:hidden mb-12 text-center">
+            <h1 className="text-3xl font-serif italic text-[#D4AF37] mb-2">
+              Pizza Palace
+            </h1>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor={emailId}>Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id={emailId}
-                    type="email"
-                    placeholder="your@gmail.com"
-                    className="pl-10"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <p className="text-xs text-amber-600 font-medium">
-                  Only Gmail addresses (@gmail.com) are accepted
-                </p>
-              </div>
+          <div className="mb-10">
+            <h3 className="text-2xl font-light text-white mb-2">
+              Create account
+            </h3>
+            <p className="text-white/40">Fill in your details to get started</p>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor={passwordId}>Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id={passwordId}
-                    type="password"
-                    placeholder="••••••••"
-                    className="pl-10"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    minLength={8}
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  Must be at least 8 characters
-                </p>
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <Alert className="border-red-800 bg-red-950/30">
+                <AlertDescription className="text-red-400">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
 
-              <div className="space-y-2">
-                <Label htmlFor={confirmPasswordId}>Confirm Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id={confirmPasswordId}
-                    type="password"
-                    placeholder="••••••••"
-                    className="pl-10"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor={nameId} className="text-white/70 text-sm">
+                Full Name
+              </Label>
+              <Input
+                id={nameId}
+                type="text"
+                placeholder="John Doe"
+                className="h-14 bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37] focus:ring-[#D4AF37]/20 text-lg"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                required
+              />
+            </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-red-500 hover:bg-red-600"
-                disabled={isLoading}
+            <div className="space-y-2">
+              <Label htmlFor={emailId} className="text-white/70 text-sm">
+                Email
+              </Label>
+              <Input
+                id={emailId}
+                type="email"
+                placeholder="your@gmail.com"
+                className="h-14 bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37] focus:ring-[#D4AF37]/20 text-lg"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                required
+              />
+              <p className="text-xs text-[#D4AF37]/50">
+                Only Gmail addresses are accepted
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor={passwordId} className="text-white/70 text-sm">
+                Password
+              </Label>
+              <Input
+                id={passwordId}
+                type="password"
+                placeholder="••••••••"
+                className="h-14 bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37] focus:ring-[#D4AF37]/20 text-lg"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                required
+                minLength={8}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor={confirmPasswordId}
+                className="text-white/70 text-sm"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
-                  </>
-                ) : (
-                  "Create Account"
-                )}
-              </Button>
-            </form>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <div className="text-sm text-center text-gray-600">
+                Confirm Password
+              </Label>
+              <Input
+                id={confirmPasswordId}
+                type="password"
+                placeholder="••••••••"
+                className="h-14 bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37] focus:ring-[#D4AF37]/20 text-lg"
+                value={formData.confirmPassword}
+                onChange={(e) =>
+                  setFormData({ ...formData, confirmPassword: e.target.value })
+                }
+                required
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-14 bg-[#D4AF37] hover:bg-[#c9a227] text-black font-medium text-lg tracking-wide transition-colors"
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Creating account...
+                </span>
+              ) : (
+                "Create Account"
+              )}
+            </Button>
+          </form>
+
+          <div className="mt-8 pt-8 border-t border-[#2a2a2a]">
+            <p className="text-center text-white/40">
               Already have an account?{" "}
-              <Link href="/login" className="text-red-500 hover:text-red-600 font-medium">
+              <Link href="/login" className="text-[#D4AF37] hover:underline">
                 Sign in
               </Link>
-            </div>
-            <Link 
-              href="/" 
-              className="text-sm text-center text-gray-500 hover:text-gray-700"
-            >
-              Back to home
-            </Link>
-          </CardFooter>
-        </Card>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
