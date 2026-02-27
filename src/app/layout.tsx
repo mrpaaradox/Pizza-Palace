@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TRPCProvider } from "@/lib/trpc";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +22,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Pizza Palace - Order Delicious Pizza Online",
-  description: "Order the best pizza in town from Pizza Palace. Fresh ingredients, fast delivery, amazing taste!",
+  description:
+    "Order the best pizza in town from Pizza Palace. Fresh ingredients, fast delivery, amazing taste!",
 };
 
 export const viewport: Viewport = {
@@ -51,6 +53,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
+            <Analytics />
           </ThemeProvider>
         </TRPCProvider>
         <Toaster />
