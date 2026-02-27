@@ -39,7 +39,7 @@ interface TrendingProduct {
   fill: string;
 }
 
-const COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899", "#6366f1", "#84cc16"];
+const COLORS = ["#D4AF37", "#c9a227", "#b8911f", "#a67c17", "#8f6610", "#765109", "#5e3d06", "#452803", "#2c1301", "#D4AF37"];
 
 interface AdminChartsProps {
   ordersByDay: OrderData[];
@@ -51,10 +51,10 @@ interface AdminChartsProps {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-        <p className="font-semibold text-gray-900">{label}</p>
+      <div className="bg-[#1a1a1a] p-3 border border-[#2a2a2a] rounded-lg shadow-lg">
+        <p className="font-light text-white">{label}</p>
         {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-sm" style={{ color: entry.color }}>
+          <p key={index} className="text-sm font-light" style={{ color: entry.color }}>
             {entry.name}: {entry.name === "Revenue" ? `$${Number(entry.value).toFixed(2)}` : entry.value}
           </p>
         ))}
@@ -72,16 +72,15 @@ export default function AdminCharts({
 }: AdminChartsProps) {
   return (
     <div className="space-y-6">
-      {/* Orders by Day - Bar Chart */}
-      <Card className="border-0 shadow-lg">
+      <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-semibold">Orders This Week</CardTitle>
+          <CardTitle className="text-lg font-light text-white">Orders This Week</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={ordersByDay} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-100" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-[#2a2a2a]" vertical={false} />
                 <XAxis
                   dataKey="date"
                   tick={{ fontSize: 11, fill: "#6b7280" }}
@@ -95,10 +94,10 @@ export default function AdminCharts({
                   tickLine={false}
                   dx={-10}
                 />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "#fef2f2" }} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: "#2a2a2a" }} />
                 <Bar
                   dataKey="orders"
-                  fill="#ef4444"
+                  fill="#D4AF37"
                   radius={[6, 6, 0, 0]}
                   name="Orders"
                   maxBarSize={40}
@@ -110,16 +109,15 @@ export default function AdminCharts({
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Trending Products - Horizontal Bar Chart */}
-        <Card className="border-0 shadow-lg">
+        <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold">Trending Products</CardTitle>
+            <CardTitle className="text-lg font-light text-white">Trending Products</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={trendingProducts} layout="vertical" margin={{ left: 0, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-100" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-[#2a2a2a]" horizontal={false} />
                   <XAxis
                     type="number"
                     tick={{ fontSize: 11, fill: "#6b7280" }}
@@ -134,7 +132,7 @@ export default function AdminCharts({
                     tickLine={false}
                     width={80}
                   />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: "#fef2f2" }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: "#2a2a2a" }} />
                   <Bar dataKey="quantity" radius={[0, 4, 4, 0]} name="Orders">
                     {trendingProducts.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -146,10 +144,9 @@ export default function AdminCharts({
           </CardContent>
         </Card>
 
-        {/* Orders by Status - Pie Chart */}
-        <Card className="border-0 shadow-lg">
+        <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold">Orders by Status</CardTitle>
+            <CardTitle className="text-lg font-light text-white">Orders by Status</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[280px]">
@@ -174,7 +171,7 @@ export default function AdminCharts({
                     verticalAlign="middle"
                     align="right"
                     iconType="circle"
-                    formatter={(value) => <span className="text-xs text-gray-600">{value}</span>}
+                    formatter={(value) => <span className="text-xs text-white/50 font-light">{value}</span>}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -182,10 +179,9 @@ export default function AdminCharts({
           </CardContent>
         </Card>
 
-        {/* Revenue by Day - Area Chart */}
-        <Card className="border-0 shadow-lg lg:col-span-2">
+        <Card className="bg-[#1a1a1a] border-[#2a2a2a] lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold">Revenue This Week</CardTitle>
+            <CardTitle className="text-lg font-light text-white">Revenue This Week</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[280px]">
@@ -193,11 +189,11 @@ export default function AdminCharts({
                 <AreaChart data={revenueByDay}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#D4AF37" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-100" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-[#2a2a2a]" vertical={false} />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 11, fill: "#6b7280" }}
@@ -216,7 +212,7 @@ export default function AdminCharts({
                   <Area
                     type="monotone"
                     dataKey="revenue"
-                    stroke="#22c55e"
+                    stroke="#D4AF37"
                     strokeWidth={2}
                     fill="url(#colorRevenue)"
                     name="Revenue"

@@ -8,8 +8,8 @@ export default function SystemStatusCard() {
   const { data: statusData, isLoading } = trpc.admin.getSystemStatus.useQuery();
 
   const getStatusColor = (count: number) => {
-    if (count > 0) return "text-green-600";
-    return "text-gray-600";
+    if (count > 0) return "text-[#D4AF37]";
+    return "text-white/30";
   };
 
   const statuses = statusData ? [
@@ -20,25 +20,25 @@ export default function SystemStatusCard() {
   ] : [];
 
   return (
-    <Card>
+    <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
       <CardHeader>
-        <CardTitle>System Status</CardTitle>
+        <CardTitle className="text-white font-light">System Status</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            <Loader2 className="w-5 h-5 animate-spin text-[#D4AF37]" />
           </div>
         ) : (
           <div className="space-y-3">
             {statuses.map((item) => (
               <div key={item.name} className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">{item.name}</span>
+                <span className="text-sm text-white/50 font-light">{item.name}</span>
                 <div className="text-right">
-                  <span className={`text-sm font-medium ${getStatusColor(item.count)}`}>
+                  <span className={`text-sm font-light ${getStatusColor(item.count)}`}>
                     {item.status === "active" ? "Active" : "Inactive"}
                   </span>
-                  <p className="text-xs text-gray-500">{item.message}</p>
+                  <p className="text-xs text-white/30">{item.message}</p>
                 </div>
               </div>
             ))}

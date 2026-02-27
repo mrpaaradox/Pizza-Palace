@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion } from "motion/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,12 +20,12 @@ import { trpc } from "@/lib/trpc";
 import ExportPDFButton from "../export-pdf-button";
 
 const statusColors: Record<string, string> = {
-  PENDING: "bg-yellow-500",
-  CONFIRMED: "bg-blue-500",
-  PREPARING: "bg-orange-500",
-  OUT_FOR_DELIVERY: "bg-purple-500",
-  DELIVERED: "bg-green-500",
-  CANCELLED: "bg-red-500",
+  PENDING: "bg-yellow-600",
+  CONFIRMED: "bg-blue-600",
+  PREPARING: "bg-orange-600",
+  OUT_FOR_DELIVERY: "bg-purple-600",
+  DELIVERED: "bg-green-600",
+  CANCELLED: "bg-red-600",
 };
 
 const statusLabels: Record<string, string> = {
@@ -38,6 +39,19 @@ const statusLabels: Record<string, string> = {
 
 const ORDERS_PER_PAGE = 10;
 const statuses = ["PENDING", "CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"];
+
+function AnimatedSection({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 export default function AdminOrdersPage() {
   const router = useRouter();
@@ -117,123 +131,140 @@ export default function AdminOrdersPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Orders</h1>
-          <p className="text-gray-600 mt-1">Manage and track all orders</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          <div className="text-sm text-gray-500">
-            Total: <span className="font-semibold">{filteredOrders.length}</span>
+      <AnimatedSection>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-light text-white">Orders</h1>
+            <p className="text-white/50 mt-1">Manage and track all orders</p>
           </div>
-          <ExportPDFButton orders={orders} />
-        </div>
-      </div>
-
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by order ID, customer name or email..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <div className="text-sm text-white/40">
+              Total: <span className="font-light text-[#D4AF37]">{filteredOrders.length}</span>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Status</SelectItem>
-                {statuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {statusLabels[status]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ExportPDFButton orders={orders} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </AnimatedSection>
+
+      <AnimatedSection delay={1}>
+        <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-white/30" />
+                <Input
+                  placeholder="Search by order ID, customer name or email..."
+                  className="pl-10 bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder:text-white/30 focus:border-[#D4AF37]"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(value: string) => setStatusFilter(value)}>
+                <SelectTrigger className="w-full md:w-48 bg-[#1a1a1a] border-[#2a2a2a] text-white">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+                  <SelectItem value="ALL" className="text-white">All Status</SelectItem>
+                  {statuses.map((status) => (
+                    <SelectItem key={status} value={status} className="text-white">
+                      {statusLabels[status]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      </AnimatedSection>
 
       <div className="space-y-4">
         {paginatedOrders.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <Package className="w-12 h-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900">No orders found</h3>
-              <p className="text-gray-600">Try adjusting your filters</p>
-            </CardContent>
-          </Card>
-        ) : (
-          paginatedOrders.map((order) => (
-            <Card key={order.id}>
-              <CardHeader className="pb-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-base">Order #{order.id.slice(-8).toUpperCase()}</CardTitle>
-                      <Badge className={statusColors[order.status]}>
-                        {statusLabels[order.status]}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {order.user.name || order.user.email} • {new Date(order.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={order.status}
-                      onValueChange={(value) => handleStatusUpdate(order.id, value)}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {statuses.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {statusLabels[status]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+          <AnimatedSection delay={2}>
+            <Card className="bg-[#1a1a1a] border-[#2a2a2a]">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="relative mb-6">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 border-2 border-dashed border-[#2a2a2a] rounded-full w-24 h-24"
+                  />
+                  <div className="relative w-20 h-20 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
+                    <Package className="w-10 h-10 text-[#D4AF37]" />
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {order.items.map((item: any) => (
-                      <Badge key={item.id} variant="outline" className="text-sm">
-                        {item.quantity}x {item.product.name} ({item.size})
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm">
-                    <div className="text-gray-500">
-                      <span>{order.address}, {order.city} {order.postalCode}</span>
-                      {order.phone && <span> • {order.phone}</span>}
-                    </div>
-                    <div className="font-bold text-lg text-red-500">
-                      ${Number(order.total).toFixed(2)}
-                    </div>
-                  </div>
-                  {order.notes && (
-                    <p className="text-sm text-gray-500 italic">Note: {order.notes}</p>
-                  )}
-                </div>
+                <h3 className="text-lg font-light text-white mb-2">No orders found</h3>
+                <p className="text-white/50">Try adjusting your filters</p>
               </CardContent>
             </Card>
+          </AnimatedSection>
+        ) : (
+          paginatedOrders.map((order, index) => (
+            <AnimatedSection key={order.id} delay={index * 0.1}>
+              <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#D4AF37]/30 transition-colors">
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-base font-light text-white">Order #{order.id.slice(-8).toUpperCase()}</CardTitle>
+                        <Badge className={statusColors[order.status]}>
+                          {statusLabels[order.status]}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-white/40 mt-1">
+                        {order.user.name || order.user.email} • {new Date(order.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={order.status}
+                        onValueChange={(value: string) => handleStatusUpdate(order.id, value)}
+                      >
+                        <SelectTrigger className="w-40 bg-[#1a1a1a] border-[#2a2a2a] text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
+                          {statuses.map((status) => (
+                            <SelectItem key={status} value={status} className="text-white">
+                              {statusLabels[status]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {order.items.map((item: any) => (
+                        <Badge key={item.id} variant="outline" className="text-sm border-[#2a2a2a] text-white/70">
+                          {item.quantity}x {item.product.name} ({item.size})
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm">
+                      <div className="text-white/50">
+                        <span>{order.address}, {order.city} {order.postalCode}</span>
+                        {order.phone && <span> • {order.phone}</span>}
+                      </div>
+                      <div className="font-light text-xl text-[#D4AF37]">
+                        ${Number(order.total).toFixed(2)}
+                      </div>
+                    </div>
+                    {order.notes && (
+                      <p className="text-sm text-white/40 italic">Note: {order.notes}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </AnimatedSection>
           ))
         )}
       </div>
@@ -244,16 +275,18 @@ export default function AdminOrdersPage() {
             variant="outline"
             onClick={() => setCurrentPage(p => p - 1)}
             disabled={currentPage === 1}
+            className="border-[#2a2a2a] text-white/60 hover:bg-[#1a1a1a] hover:border-[#D4AF37]/30 hover:text-white"
           >
             Previous
           </Button>
-          <span className="flex items-center px-4 text-sm">
+          <span className="flex items-center px-4 text-sm text-white/40 font-light">
             Page {currentPage} of {totalPages}
           </span>
           <Button
             variant="outline"
             onClick={() => setCurrentPage(p => p + 1)}
             disabled={currentPage === totalPages}
+            className="border-[#2a2a2a] text-white/60 hover:bg-[#1a1a1a] hover:border-[#D4AF37]/30 hover:text-white"
           >
             Next
           </Button>
